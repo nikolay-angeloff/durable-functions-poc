@@ -1,10 +1,10 @@
 # Microsoft 365 product path — `m365Orchestration`
 
-Оркестрацията **`m365Orchestration`** изпълнява стъпките **последователно**: `tenantReadiness` → `licenseCheck` → `consentGate` (activity **`mockM365Step`**). При неуспех на стъпка се изпраща известие към опашката **`correction-needed`**, UI ползва **`GET /orchestration-status`** и **`POST /correction`** със същия `correlationId`.
+Оркестрацията **`m365Orchestration`** изпълнява стъпките **последователно**: `tenantReadiness` → `licenseCheck` → `consentGate` — всяка стъпка е **отделна** activity: **`mockM365TenantReadiness`**, **`mockM365LicenseCheck`**, **`mockM365ConsentGate`**. При неуспех на стъпка се изпраща известие към опашката **`correction-needed`**, UI ползва **`GET /orchestration-status`** и **`POST /correction`** със същия `correlationId`.
 
-## Кога фейлват стъпките (mock — `mockM365Step`)
+## Кога фейлват стъпките (mock — по activity)
 
-Логиката е в `functions/src/activities/mockM365Steps.ts`. Проверките са **демонстрационни**; броенето на цифри в телефона е по regex `/\d/g`.
+Логиката е в `functions/src/activities/mockM365TenantReadiness.ts`, `mockM365LicenseCheck.ts`, `mockM365ConsentGate.ts`. Проверките са **демонстрационни**; броенето на цифри в телефона е по regex `/\d/g`.
 
 | Стъпка | Условие за fail | Примерно съобщение към клиента |
 |--------|-----------------|--------------------------------|
@@ -99,7 +99,7 @@ flowchart TD
   W -->|повторение на текущата стъпка| Seq
 ```
 
-При fail на дадена стъпка оркестраторът изчаква корекция и **извиква отново същата** `mockM365Step` със същото `stepName`, след което при успех продължава към следващата стъпка в веригата.
+При fail на дадена стъпка оркестраторът изчаква корекция и **извиква отново същата** activity за тази логическа стъпка (напр. `mockM365LicenseCheck` за `licenseCheck`), след което при успех продължава към следващата стъпка в веригата.
 
 ## Sequence: последователни стъпки и корекция
 
@@ -127,7 +127,7 @@ sequenceDiagram
   Act->>T: upsert correlationId → instanceId
 
   loop tenantReadiness → licenseCheck → consentGate
-    Orch->>Act: mockM365Step (текуща стъпка)
+    Orch->>Act: mockM365TenantReadiness / mockM365LicenseCheck / mockM365ConsentGate (текуща)
     alt fail
       Act-->>Orch: ok false
       Orch->>Act: publishCorrectionNotification
@@ -143,7 +143,7 @@ sequenceDiagram
         SPA->>Fix: correction payload
         Fix->>Orch: raiseEvent CorrectionSubmitted
       end
-      Orch->>Act: mockM365Step retry същата стъпка
+      Orch->>Act: retry същата activity за текущата стъпка
     else success
       Act-->>Orch: ok true
     end

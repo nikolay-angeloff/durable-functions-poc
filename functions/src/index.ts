@@ -1,6 +1,10 @@
 import "./activities/registerCorrelation";
-import "./activities/mockAzureSteps";
-import "./activities/mockM365Steps";
+import "./activities/mockAzureValidate";
+import "./activities/mockAzureEnrich";
+import "./activities/mockAzureApprove";
+import "./activities/mockM365TenantReadiness";
+import "./activities/mockM365LicenseCheck";
+import "./activities/mockM365ConsentGate";
 import "./activities/publishCorrectionNotification";
 import "./activities/sendEmail";
 import "./orchestrations/azureOrchestration";

@@ -76,8 +76,8 @@ For a demo, **Option B** is often clearer; **Option A** uses fewer resources.
 
 | Flow | Orchestrator | Mock activity | Steps (order) |
 |------|--------------|---------------|-----------------|
-| **Azure** | `azureOrchestration` | `mockAzureStep` | **`validate` ∥ `enrich`** (parallel, join) → **`approve`** (sequential) |
-| **Microsoft 365** | `m365Orchestration` | `mockM365Step` | `tenantReadiness` → `licenseCheck` → `consentGate` |
+| **Azure** | `azureOrchestration` | `mockAzureValidate`, `mockAzureEnrich`, `mockAzureApprove` | **`validate` ∥ `enrich`** (parallel, join) → **`approve`** (sequential) |
+| **Microsoft 365** | `m365Orchestration` | `mockM365TenantReadiness`, `mockM365LicenseCheck`, `mockM365ConsentGate` | `tenantReadiness` → `licenseCheck` → `consentGate` |
 
 Correction handling (Service Bus `correction-needed`, `waitForExternalEvent`, Table Storage, HTTP poll/submit) is parallel in structure but **not** shared code — each orchestration is implemented independently in `azureOrchestration.ts` / `m365Orchestration.ts`.
 

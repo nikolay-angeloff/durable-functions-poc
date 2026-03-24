@@ -1,13 +1,21 @@
 import * as df from "durable-functions";
 import type { OrchestrationContext, OrchestrationHandler } from "durable-functions";
-import type { M365StepName } from "../activities/mockM365Steps";
 import type { FormSubmission, MockApiResult } from "../lib/types";
+
+/** Logical step id (for custom status / failedStep); maps to one activity each. */
+export type M365StepName = "tenantReadiness" | "licenseCheck" | "consentGate";
+
+const ACTIVITY_BY_STEP: Record<M365StepName, string> = {
+    tenantReadiness: "mockM365TenantReadiness",
+    licenseCheck: "mockM365LicenseCheck",
+    consentGate: "mockM365ConsentGate",
+};
 
 const M365_STEPS: readonly M365StepName[] = ["tenantReadiness", "licenseCheck", "consentGate"];
 
 /**
  * Microsoft 365 path: Entra tenant → license/contact → consent gate.
- * Different step names, rules, and mock activity from Azure.
+ * Each step is a separate Azure Function activity.
  */
 const m365OrchestrationHandler: OrchestrationHandler = function* (
     context: OrchestrationContext
@@ -25,8 +33,8 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
     });
 
     for (const stepName of M365_STEPS) {
-        let stepResult = (yield context.df.callActivity("mockM365Step", {
-            stepName,
+        const activityName = ACTIVITY_BY_STEP[stepName];
+        let stepResult = (yield context.df.callActivity(activityName, {
             form,
         })) as MockApiResult;
 
@@ -58,8 +66,7 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
                 correlationId: form.correlationId,
             };
 
-            stepResult = (yield context.df.callActivity("mockM365Step", {
-                stepName,
+            stepResult = (yield context.df.callActivity(activityName, {
                 form,
             })) as MockApiResult;
         }

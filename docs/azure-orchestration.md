@@ -2,9 +2,9 @@
 
 Оркестрацията **`azureOrchestration`** използва **паралелни** стъпки **validate** и **enrich** (`context.df.Task.all`), **join** с обединени грешки и **една** корекция към уеб приложението при неуспех. След успешен join следва **последователна** стъпка **approve** (собствен цикъл за корекция при нужда).
 
-## Кога фейлват стъпките (mock — `mockAzureStep`)
+## Кога фейлват стъпките (mock — отделни activities)
 
-Логиката е в `functions/src/activities/mockAzureSteps.ts`. Всички проверки са **демонстрационни**; съобщенията за грешка са фиксирани низове в кода.
+Всяка стъпка е **отделна** Azure Function activity: `mockAzureValidate`, `mockAzureEnrich`, `mockAzureApprove` (файлове в `functions/src/activities/`). Проверките са **демонстрационни**; съобщенията за грешка са фиксирани низове в кода.
 
 | Стъпка | Условие за fail | Примерно съобщение към клиента |
 |--------|-----------------|--------------------------------|
@@ -75,15 +75,15 @@ flowchart TD
 
   subgraph P1["Фаза 1 — паралел validate ∥ enrich"]
     Reg[registerCorrelation]
-    V[mockAzureStep validate]
-    En[mockAzureStep enrich]
+    V[mockAzureValidate]
+    En[mockAzureEnrich]
     J[Join]
     Pub1[publishCorrectionNotification]
     W1[waitForExternalEvent]
   end
 
   subgraph P2["Фаза 2 — approve"]
-    Ap[mockAzureStep approve]
+    Ap[mockAzureApprove]
     Pub2[publishCorrectionNotification]
     W2[waitForExternalEvent]
     Mail[sendEmail]
@@ -140,9 +140,9 @@ sequenceDiagram
 
   loop Докато validate И enrich не са и двата ok
     par Паралелно
-      Orch->>Act: mockAzureStep validate
+      Orch->>Act: mockAzureValidate
       And
-      Orch->>Act: mockAzureStep enrich
+      Orch->>Act: mockAzureEnrich
     end
     Act-->>Orch: MockApiResult x2
     alt поне един fail
@@ -165,7 +165,7 @@ sequenceDiagram
   end
 
   loop Докато approve не е ok
-    Orch->>Act: mockAzureStep approve
+    Orch->>Act: mockAzureApprove
     alt fail
       Orch->>Act: publishCorrectionNotification (single step)
       Act->>SB: enqueue correction-needed

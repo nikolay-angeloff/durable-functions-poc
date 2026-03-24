@@ -24,14 +24,8 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
     // Fan-out / fan-in: validate and enrich run in parallel; one inquiry with all failures.
     let parallelDone = false;
     while (!parallelDone) {
-        const tValidate = context.df.callActivity("mockAzureStep", {
-            stepName: "validate",
-            form,
-        });
-        const tEnrich = context.df.callActivity("mockAzureStep", {
-            stepName: "enrich",
-            form,
-        });
+        const tValidate = context.df.callActivity("mockAzureValidate", { form });
+        const tEnrich = context.df.callActivity("mockAzureEnrich", { form });
         const batch = (yield context.df.Task.all([tValidate, tEnrich])) as MockApiResult[];
 
         const validateResult = batch[0];
@@ -80,10 +74,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
 
     // Sequential approve (single-step correction loop as before).
     const stepName = "approve";
-    let stepResult = (yield context.df.callActivity("mockAzureStep", {
-        stepName,
-        form,
-    })) as MockApiResult;
+    let stepResult = (yield context.df.callActivity("mockAzureApprove", { form })) as MockApiResult;
 
     while (!stepResult.ok) {
         yield context.df.callActivity("publishCorrectionNotification", {
@@ -115,10 +106,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             correlationId: form.correlationId,
         };
 
-        stepResult = (yield context.df.callActivity("mockAzureStep", {
-            stepName,
-            form,
-        })) as MockApiResult;
+        stepResult = (yield context.df.callActivity("mockAzureApprove", { form })) as MockApiResult;
     }
 
     context.df.setCustomStatus({

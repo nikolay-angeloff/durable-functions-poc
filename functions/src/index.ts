@@ -9,4 +9,5 @@ import "./functions/azureQueueTrigger";
 import "./functions/m365QueueTrigger";
 import "./functions/submitForm";
 import "./functions/orchestrationStatus";
+import "./functions/orchestrationMonitor";
 import "./functions/submitCorrection";

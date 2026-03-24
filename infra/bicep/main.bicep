@@ -22,6 +22,7 @@ var storageName = toLower(take('st${baseName}${suffix}', 24))
 var funcAppName = '${baseName}-func-${suffix}'
 var sbNamespaceName = '${baseName}-sb-${suffix}'
 var swaName = '${baseName}-swa-${suffix}'
+var swaMonitorName = '${baseName}-monswa-${suffix}'
 var apimName = '${baseName}-apim-${suffix}'
 var lawName = '${baseName}-law-${suffix}'
 
@@ -193,6 +194,19 @@ resource swa 'Microsoft.Web/staticSites@2022-03-01' = {
   }
 }
 
+/** Separate SPA for Durable orchestration monitor (only UI; calls same Function API). */
+resource swaMonitor 'Microsoft.Web/staticSites@2022-03-01' = {
+  name: swaMonitorName
+  location: location
+  sku: {
+    name: 'Free'
+    tier: 'Free'
+  }
+  properties: {
+    allowConfigFileUpdates: true
+  }
+}
+
 resource apim 'Microsoft.ApiManagement/service@2022-08-01' = if (deployApim) {
   name: apimName
   location: location
@@ -270,6 +284,8 @@ output functionAppName string = functionApp.name
 output functionAppHost string = functionApp.properties.defaultHostName
 output staticWebAppName string = swa.name
 output staticWebAppHostname string = swa.properties.defaultHostname
+output staticWebAppMonitorName string = swaMonitor.name
+output staticWebAppMonitorHostname string = swaMonitor.properties.defaultHostname
 output serviceBusNamespace string = serviceBusNamespace.name
 output apimGatewayUrl string = deployApim ? 'https://${apimName}.azure-api.net' : ''
 output apimSubmitUrl string = deployApim ? 'https://${apimName}.azure-api.net/submit' : ''

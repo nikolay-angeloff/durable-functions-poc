@@ -44,8 +44,13 @@ jobs:
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "$DEPLOY_NAME" \
             --query "properties.outputs.staticWebAppHostname.value" -o tsv)
+          SWA_MON_HOST=$(az deployment group show \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "$DEPLOY_NAME" \
+            --query "properties.outputs.staticWebAppMonitorHostname.value" -o tsv)
           echo "function_app=$FUNC" >> "$GITHUB_OUTPUT"
           echo "swa_host=$SWA_HOST" >> "$GITHUB_OUTPUT"
+          echo "swa_monitor_host=$SWA_MON_HOST" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -65,7 +70,7 @@ jobs:
           npm run build
           func azure functionapp publish "$FUNC_NAME" --javascript
 
-      - name: Build frontend
+      - name: Build frontend (form)
         working-directory: frontend
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
@@ -73,21 +78,45 @@ jobs:
           npm ci
           npm run build
 
-      - name: Require Static Web Apps deployment token
+      - name: Build frontend (monitor)
+        working-directory: frontend-monitor
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_FORM_APP_BASE_URL: https://${{ steps.infra.outputs.swa_host }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Require Static Web Apps deployment tokens
         env:
           SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          SWA_MONITOR_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN }}
         run: |
           if [ -z "${SWA_TOKEN:-}" ]; then
-            echo "::error::Missing secret AZURE_STATIC_WEB_APPS_API_TOKEN. In Azure Portal open your Static Web App → Manage deployment token, then add it under GitHub → Settings → Secrets and variables → Actions."
+            echo "::error::Missing secret AZURE_STATIC_WEB_APPS_API_TOKEN (form app). Azure Portal → first Static Web App → Manage deployment token."
+            exit 1
+          fi
+          if [ -z "${SWA_MONITOR_TOKEN:-}" ]; then
+            echo "::error::Missing secret AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN (monitor app). Bicep creates a second Static Web App (*-monswa-*); open it in Portal → Manage deployment token."
             exit 1
           fi
 
-      - name: Deploy Static Web App
+      - name: Deploy Static Web App (form)
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: frontend/dist
+          api_location: ""
+          skip_app_build: true
+
+      - name: Deploy Static Web App (monitor)
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend-monitor/dist
           api_location: ""
           skip_app_build: true

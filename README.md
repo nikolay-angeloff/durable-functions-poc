@@ -1,6 +1,6 @@
 # Durable Functions demo (Azure)
 
-React form → HTTP Function → **Service Bus** (two queues) → **Durable orchestrations** → SendGrid email. Infra: **Bicep**. CI: **GitHub Actions**. Edge: **API Management** (optional, `deployApim` in parameters).
+React **form** + separate **monitor** SPA → HTTP Function → **Service Bus** (two queues) → **Durable orchestrations** → SendGrid email. Infra: **Bicep** (two Static Web Apps). CI: **GitHub Actions**. Edge: **API Management** (optional, `deployApim` in parameters).
 
 ## Prerequisites
 
@@ -15,11 +15,14 @@ React form → HTTP Function → **Service Bus** (two queues) → **Durable orch
 | `AZURE_TENANT_ID` | Directory (tenant) ID |
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID |
 | `AZURE_RESOURCE_GROUP` | Resource group name (e.g. `rg-durable-demo`) |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment token for the **form** Static Web App (Portal → SWA → *Manage deployment token*) |
+| `AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN` | Deployment token for the **monitor** Static Web App (second SWA, name `*-monswa-*`) |
+| `VITE_API_BASE_URL` | Optional in CI; base URL for API calls in both SPAs (see below) |
 
-The workflow runs **`az login --service-principal`** on the runner (no `azure/login` action JSON). **Required for the React site to appear:** `AZURE_STATIC_WEB_APPS_API_TOKEN` — from Azure Portal → your **Static Web App** → **Manage deployment token** (without it, deploy fails with `deployment_token was not provided`). Optional: `VITE_API_BASE_URL`.
-- Optional: `AZURE_STATIC_WEB_APPS_API_TOKEN` (Static Web App deployment token; workflow step uses `continue-on-error` if missing), `VITE_API_BASE_URL` for the production build:
-  - **API Management:** `https://<apim-name>.azure-api.net` (the template exposes `/submit` at the gateway root).
-  - **Function App only (no APIM):** `https://<function-app>.azurewebsites.net/api` (must include the `/api` prefix so the client calls `.../api/submit`).
+The workflow runs **`az login --service-principal`**. Both SWA tokens are **required** for deploy (otherwise `deployment_token was not provided`). **`VITE_API_BASE_URL`** for production builds:
+
+- **API Management:** `https://<apim-name>.azure-api.net` (template exposes `/submit` at the gateway root).
+- **Function App only (no APIM):** `https://<function-app>.azurewebsites.net/api` (must include `/api` so the client calls `.../api/submit`, `.../api/orchestration-monitor`, etc.).
 
 ## Local development
 
@@ -27,7 +30,8 @@ The workflow runs **`az login --service-principal`** on the runner (no `azure/lo
 2. **Service Bus:** use a real namespace (queues `form-azure`, `form-m365`) — copy connection string into `functions/local.settings.json` (see `local.settings.json.example`).
 3. Copy `functions/local.settings.json.example` → `functions/local.settings.json` and fill values.
 4. Terminal A — Functions: `cd functions && npm install && npm run build && npm start` (requires [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)).
-5. Terminal B — Frontend: `cd frontend && npm install && npm run dev`. The Vite dev server proxies `/api` to `http://127.0.0.1:7071`.
+5. Terminal B — Form app: `cd frontend && npm install && npm run dev` (port **5173**; proxies `/api` to `http://127.0.0.1:7071`).
+6. Optional — Monitor app: `cd frontend-monitor && npm install && npm run dev` (port **5174**; same `/api` proxy). Set `VITE_FORM_APP_BASE_URL=http://localhost:5173` if you want “Open form” links from the monitor to hit the form dev server.
 
 ## Deploy infra manually
 
@@ -54,7 +58,14 @@ Opening that URL loads the SPA with the same **correlation / inquiry ID** and st
 ## Project layout
 
 - `functions/` — Node.js 20, Durable Functions, HTTP `submit`, Service Bus starters, `sendEmail` activity
-- `frontend/` — Vite + React
-- `infra/bicep/` — Service Bus, Function App, Log Analytics / App Insights, Static Web App, optional APIM
+- `frontend/` — Vite + React **form** SPA
+- `frontend-monitor/` — Vite + React **monitor** SPA (orchestration list; separate Static Web App in Azure)
+- `infra/bicep/` — Service Bus, Function App, **two** Static Web Apps, Log Analytics / App Insights, optional APIM
 
 See `PROJECT.md` for architecture and decisions. Mermaid diagrams per product path: [`docs/azure-orchestration.md`](docs/azure-orchestration.md), [`docs/m365-orchestration.md`](docs/m365-orchestration.md).
+
+### Orchestration monitor (second Static Web App)
+
+Bicep deploys a **second** Static Web App (`*-monswa-*`) for **`frontend-monitor`**. It calls **`GET /api/orchestration-monitor`** on the same Function App (`DurableClient.getStatusAll()`). CI sets **`VITE_FORM_APP_BASE_URL`** to the **form** SWA URL so **Open form** / resume links point at the primary site. Optional app setting **`MONITOR_DASHBOARD_KEY`**: when set, send header **`X-Monitor-Key`** (the monitor UI can paste it once; stored in `sessionStorage`). Not a full [Durable Functions Monitor](https://github.com/microsoft/DurableFunctionsMonitor) (Gantt, history).
+
+If **`VITE_API_BASE_URL`** points only at **API Management** and the template exposes just `/submit`, add APIM routes for **`/orchestration-monitor`**, **`/orchestration-status`**, **`/correction`**, or call the Function App host for those paths.

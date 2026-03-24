@@ -3,6 +3,6 @@ export function corsHeaders(origin: string | undefined): Record<string, string> 
     return {
         "Access-Control-Allow-Origin": allow === "*" ? "*" : origin ?? allow,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, X-Monitor-Key",
     };
 }

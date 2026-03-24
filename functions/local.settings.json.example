@@ -11,6 +11,8 @@
 
     "WEB_APP_BASE_URL": "https://victorious-ocean-036a1ed03.2.azurestaticapps.net",
 
-    "CORS_ALLOW_ORIGIN": "http://localhost:5173"
+    "CORS_ALLOW_ORIGIN": "http://localhost:5173",
+
+    "MONITOR_DASHBOARD_KEY": ""
   }
 }

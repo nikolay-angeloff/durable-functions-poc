@@ -1,10 +1,10 @@
-import RequestForm from "./RequestForm";
+import MonitorDashboard from "./MonitorDashboard";
 import "./App.css";
 
 export default function App() {
     return (
         <div className="card">
-            <RequestForm />
+            <MonitorDashboard />
         </div>
     );
 }

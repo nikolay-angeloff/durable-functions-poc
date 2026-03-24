@@ -1,6 +1,7 @@
 import { InvocationContext } from "@azure/functions";
 import { ServiceBusClient } from "@azure/service-bus";
 import * as df from "durable-functions";
+import sgMail from "@sendgrid/mail";
 import { QUEUE_CORRECTION_NEEDED } from "../lib/constants";
 import type { FormSubmission } from "../lib/types";
 
@@ -16,14 +17,73 @@ export type PublishCorrectionInput = {
     error?: string | undefined;
 };
 
+/** Loose UUID shape check before putting correlationId in a URL. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function buildResumeUrl(correlationId: string): string | undefined {
+    const base = process.env.WEB_APP_BASE_URL?.trim().replace(/\/$/, "");
+    if (!base || !UUID_RE.test(correlationId)) {
+        return undefined;
+    }
+    return `${base}/?correlationId=${encodeURIComponent(correlationId)}`;
+}
+
+/** SendGrid email with SPA link ?correlationId=… so the user can open the app and continue the same inquiry. */
+async function sendCorrectionResumeEmail(
+    input: PublishCorrectionInput,
+    failedStep: string,
+    context: InvocationContext
+): Promise<void> {
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const from = process.env.SENDGRID_FROM_EMAIL;
+    const to = input.form.email;
+    const resumeUrl = buildResumeUrl(input.correlationId);
+
+    if (!apiKey || !from) {
+        context.log("SENDGRID_* not set; skip correction resume email");
+        return;
+    }
+    if (!resumeUrl) {
+        context.log(
+            "WEB_APP_BASE_URL missing or invalid correlationId; skip correction resume email"
+        );
+        return;
+    }
+
+    const productLabel = input.flow === "azure" ? "Azure" : "Microsoft 365";
+    const failureSummary =
+        input.aggregatedFailures && input.aggregatedFailures.length > 0
+            ? input.aggregatedFailures.map((f) => `${f.step}: ${f.error}`).join("\n")
+            : input.error ?? "(see orchestration status)";
+
+    sgMail.setApiKey(apiKey);
+    await sgMail.send({
+        to,
+        from,
+        subject: `[Demo] Action needed — ${productLabel} request (correction)`,
+        text: [
+            `Hello ${input.form.name},`,
+            ``,
+            `Your ${productLabel} workflow paused because a step needs a correction.`,
+            `Failed step(s): ${failedStep}`,
+            ``,
+            `Open this link to continue the same inquiry (correlation ID is pre-filled):`,
+            resumeUrl,
+            ``,
+            `Inquiry ID (correlation): ${input.correlationId}`,
+            ``,
+            `Details:`,
+            failureSummary,
+            ``,
+            `This is a demo message from Azure Durable Functions.`,
+        ].join("\n"),
+    });
+
+    context.log(`Sent correction resume email to ${to}`);
+}
+
 df.app.activity("publishCorrectionNotification", {
     handler: async (input: PublishCorrectionInput, context: InvocationContext) => {
-        const conn = process.env.ServiceBusConnection;
-        if (!conn) {
-            context.log("ServiceBusConnection missing; skip correction queue publish");
-            return;
-        }
-
         const failedStep =
             input.aggregatedFailures && input.aggregatedFailures.length > 0
                 ? input.aggregatedFailures.map((f) => f.step).join("+")
@@ -47,24 +107,42 @@ df.app.activity("publishCorrectionNotification", {
             hint: "Web: GET /api/orchestration-status ; POST /api/correction with same correlationId",
         };
 
-        const client = new ServiceBusClient(conn);
-        try {
-            const sender = client.createSender(QUEUE_CORRECTION_NEEDED);
-            await sender.sendMessages({
-                body,
-                contentType: "application/json",
-                correlationId: input.correlationId,
-                applicationProperties: {
-                    flow: input.flow,
-                    failedStep,
-                    phase: input.phase ?? "",
-                },
-            });
-            await sender.close();
-        } finally {
-            await client.close();
+        const conn = process.env.ServiceBusConnection;
+        if (conn) {
+            try {
+                const client = new ServiceBusClient(conn);
+                try {
+                    const sender = client.createSender(QUEUE_CORRECTION_NEEDED);
+                    await sender.sendMessages({
+                        body,
+                        contentType: "application/json",
+                        correlationId: input.correlationId,
+                        applicationProperties: {
+                            flow: input.flow,
+                            failedStep,
+                            phase: input.phase ?? "",
+                        },
+                    });
+                    await sender.close();
+                } finally {
+                    await client.close();
+                }
+                context.log(`Published correction-needed (${input.flow}) for instance ${input.instanceId}`);
+            } catch (err) {
+                context.log(
+                    `Service Bus correction-needed publish failed: ${err instanceof Error ? err.message : String(err)}`
+                );
+            }
+        } else {
+            context.log("ServiceBusConnection missing; skip correction queue publish");
         }
 
-        context.log(`Published correction-needed (${input.flow}) for instance ${input.instanceId}`);
+        try {
+            await sendCorrectionResumeEmail(input, failedStep, context);
+        } catch (err) {
+            context.log(
+                `Correction resume email failed: ${err instanceof Error ? err.message : String(err)}`
+            );
+        }
     },
 });

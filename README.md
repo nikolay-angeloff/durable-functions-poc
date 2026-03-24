@@ -40,6 +40,17 @@ az deployment group create \
 
 Set `deployApim: true` in parameters for API Management (first activation can take 30+ minutes). Configure SendGrid on the Function App: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` (verified sender).
 
+### Correction pause — resume link email
+
+When a mock step fails, the workflow waits for **`POST /correction`**. The activity **`publishCorrectionNotification`** also sends a **transactional email** to the submitter’s address (same SendGrid settings as completion mail) if **`WEB_APP_BASE_URL`** is set. The message includes a link:
+
+`WEB_APP_BASE_URL/?correlationId=<inquiry-id>`
+
+Opening that URL loads the SPA with the same **correlation / inquiry ID** and starts status polling so the user can submit a correction (“restart” the human step without a new form submission).
+
+- **Bicep:** optional parameter **`webAppBaseUrl`** overrides the default `https://<Static Web App default hostname>` for `WEB_APP_BASE_URL` on the Function App (no trailing slash). Demo parameters set the dev Static Web App host **`https://victorious-ocean-036a1ed03.2.azurestaticapps.net`**.
+- **Local:** copy `local.settings.json.example` — `WEB_APP_BASE_URL` points at that same dev SPA so resume links match the deployed frontend when testing locally. If `WEB_APP_BASE_URL` or SendGrid is missing, the resume email is skipped (see Function logs).
+
 ## Project layout
 
 - `functions/` — Node.js 20, Durable Functions, HTTP `submit`, Service Bus starters, `sendEmail` activity

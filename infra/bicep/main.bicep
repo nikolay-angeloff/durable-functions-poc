@@ -14,6 +14,9 @@ param apimPublisherEmail string = 'admin@example.com'
 @description('Deploy API Management (can take 30–45 minutes on first deploy).')
 param deployApim bool = true
 
+@description('Public URL of the SPA for correction resume emails (WEB_APP_BASE_URL). No trailing slash. Leave empty to use https://<deployed Static Web App default hostname>.')
+param webAppBaseUrl string = ''
+
 var suffix = uniqueString(resourceGroup().id, baseName)
 var storageName = toLower(take('st${baseName}${suffix}', 24))
 var funcAppName = '${baseName}-func-${suffix}'
@@ -168,6 +171,10 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'CORS_ALLOW_ORIGIN'
           value: '*'
+        }
+        {
+          name: 'WEB_APP_BASE_URL'
+          value: webAppBaseUrl != '' ? webAppBaseUrl : 'https://${swa.properties.defaultHostname}'
         }
       ]
     }

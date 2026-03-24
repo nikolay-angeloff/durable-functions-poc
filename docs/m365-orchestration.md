@@ -2,6 +2,18 @@
 
 Оркестрацията **`m365Orchestration`** изпълнява стъпките **последователно**: `tenantReadiness` → `licenseCheck` → `consentGate` (activity **`mockM365Step`**). При неуспех на стъпка се изпраща известие към опашката **`correction-needed`**, UI ползва **`GET /orchestration-status`** и **`POST /correction`** със същия `correlationId`.
 
+## Кога фейлват стъпките (mock — `mockM365Step`)
+
+Логиката е в `functions/src/activities/mockM365Steps.ts`. Проверките са **демонстрационни**; броенето на цифри в телефона е по regex `/\d/g`.
+
+| Стъпка | Условие за fail | Примерно съобщение към клиента |
+|--------|-----------------|--------------------------------|
+| **tenantReadiness** | В `name` (case-insensitive) има **`NOTENANT`**, или `email` не съдържа **`@`** | `[M365] Tenant readiness failed — marker NOTENANT…` / `[M365] Invalid email for tenant routing (mock)` |
+| **licenseCheck** | В `phone` има **по-малко от 10 цифри** (само символите `0`–`9` се броят) | `[M365] License / contact validation — need at least 10 digits in phone (mock)` |
+| **consentGate** | `correctionConfirmed` е **false** или липсва | `[M365] Admin consent / SoR acknowledgement not recorded (mock)` |
+
+**Бележки:** Първото submit обикновено минава валидацията на email от API (има `@`), така че проверката за липсващ `@` при **tenantReadiness** е по-скоро защита в кода. За **`consentGate`** е нужна корекция с **`correctionConfirmed: true`**, аналогично на Azure **approve**.
+
 ## End-to-end (логически)
 
 ```mermaid

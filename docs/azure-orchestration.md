@@ -2,6 +2,18 @@
 
 Оркестрацията **`azureOrchestration`** използва **паралелни** стъпки **validate** и **enrich** (`context.df.Task.all`), **join** с обединени грешки и **една** корекция към уеб приложението при неуспех. След успешен join следва **последователна** стъпка **approve** (собствен цикъл за корекция при нужда).
 
+## Кога фейлват стъпките (mock — `mockAzureStep`)
+
+Логиката е в `functions/src/activities/mockAzureSteps.ts`. Всички проверки са **демонстрационни**; съобщенията за грешка са фиксирани низове в кода.
+
+| Стъпка | Условие за fail | Примерно съобщение към клиента |
+|--------|-----------------|--------------------------------|
+| **validate** | `name` след `trim` е по-къс от **2 символа** | `[Azure] Name too short (mock ARM validation)` |
+| **enrich** | В `name` (без значение от главни/малки букви) се съдържа поднизът **`BLOCK`** | `[Azure] Enrichment blocked — policy on display name (mock)` |
+| **approve** | `correctionConfirmed` е **false** или липсва (първоначалното submit го праща като `false`) | `[Azure] Risk gate: human confirmation required before provisioning (mock)` |
+
+**Бележки:** Ако в паралелната фаза **и двете** стъпки fail-нат, UI получава **две** грешки наведнъж (`aggregatedFailures`). За да мине **approve**, потребителят трябва да изпрати корекция с **`correctionConfirmed: true`** (в SPA това е формата за корекция).
+
 ## End-to-end (логически)
 
 ```mermaid

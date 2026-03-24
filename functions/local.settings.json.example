@@ -9,6 +9,8 @@
     "SENDGRID_API_KEY": "",
     "SENDGRID_FROM_EMAIL": "verified-sender@yourdomain.com",
 
+    "WEB_APP_BASE_URL": "https://victorious-ocean-036a1ed03.2.azurestaticapps.net",
+
     "CORS_ALLOW_ORIGIN": "http://localhost:5173"
   }
 }

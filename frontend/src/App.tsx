@@ -17,8 +17,23 @@ type OrchestrationStatusPayload = {
     };
 };
 
+const UUID_PARAM =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function initialCorrelationFromUrl(): { id: string; resumeFromLink: boolean } {
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    const q = new URLSearchParams(search).get("correlationId")?.trim();
+    if (q && UUID_PARAM.test(q)) {
+        return { id: q, resumeFromLink: true };
+    }
+    return { id: crypto.randomUUID(), resumeFromLink: false };
+}
+
 export default function App() {
-    const correlationId = useMemo(() => crypto.randomUUID(), []);
+    const { id: correlationId, resumeFromLink } = useMemo(
+        () => initialCorrelationFromUrl(),
+        []
+    );
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -44,6 +59,13 @@ export default function App() {
     }, [correlationId, apiBase]);
 
     const correctionUrl = apiBase ? `${apiBase.replace(/\/$/, "")}/correction` : "/api/correction";
+
+    useEffect(() => {
+        if (resumeFromLink) {
+            setPoll(true);
+            setMessage("Resume link — checking workflow status…");
+        }
+    }, [resumeFromLink]);
 
     useEffect(() => {
         if (!poll) {

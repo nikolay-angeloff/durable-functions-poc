@@ -7,6 +7,9 @@
     },
     "deployApim": {
       "value": false
+    },
+    "webAppBaseUrl": {
+      "value": "https://victorious-ocean-036a1ed03.2.azurestaticapps.net"
     }
   }
 }

@@ -72,10 +72,12 @@ jobs:
           npm run build
           func azure functionapp publish "$FUNC_NAME" --javascript
 
+      # APIs run on the Function App, not on SWA (api_location is empty). The SPA must call
+      # https://<func>.azurewebsites.net/api/... — relative /api/* on the SWA host returns 405.
       - name: Build frontend (form)
         working-directory: frontend
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL != '' && secrets.VITE_API_BASE_URL || format('https://{0}.azurewebsites.net/api', steps.infra.outputs.function_app) }}
         run: |
           npm ci
           npm run build
@@ -83,7 +85,7 @@ jobs:
       - name: Build frontend (monitor)
         working-directory: frontend-monitor
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL != '' && secrets.VITE_API_BASE_URL || format('https://{0}.azurewebsites.net/api', steps.infra.outputs.function_app) }}
           VITE_FORM_APP_BASE_URL: https://${{ steps.infra.outputs.swa_host }}
         run: |
           npm ci

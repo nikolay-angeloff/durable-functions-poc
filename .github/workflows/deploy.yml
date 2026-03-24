@@ -10,6 +10,8 @@ permissions:
 
 env:
   NODE_VERSION: "20.x"
+  # Override org/runner defaults that point npm at a private Nexus (avoids E401 in CI).
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
 
 jobs:
   deploy:

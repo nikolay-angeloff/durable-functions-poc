@@ -16,7 +16,7 @@ React form → HTTP Function → **Service Bus** (two queues) → **Durable orch
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID |
 | `AZURE_RESOURCE_GROUP` | Resource group name (e.g. `rg-durable-demo`) |
 
-The workflow runs **`az login --service-principal`** on the runner (no `azure/login` action JSON). Optional: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `VITE_API_BASE_URL`.
+The workflow runs **`az login --service-principal`** on the runner (no `azure/login` action JSON). **Required for the React site to appear:** `AZURE_STATIC_WEB_APPS_API_TOKEN` — from Azure Portal → your **Static Web App** → **Manage deployment token** (without it, deploy fails with `deployment_token was not provided`). Optional: `VITE_API_BASE_URL`.
 - Optional: `AZURE_STATIC_WEB_APPS_API_TOKEN` (Static Web App deployment token; workflow step uses `continue-on-error` if missing), `VITE_API_BASE_URL` for the production build:
   - **API Management:** `https://<apim-name>.azure-api.net` (the template exposes `/submit` at the gateway root).
   - **Function App only (no APIM):** `https://<function-app>.azurewebsites.net/api` (must include the `/api` prefix so the client calls `.../api/submit`).

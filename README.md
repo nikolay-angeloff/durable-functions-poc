@@ -62,10 +62,15 @@ Opening that URL loads the SPA with the same **correlation / inquiry ID** and st
 - `frontend-monitor/` — Vite + React **monitor** SPA (orchestration list; separate Static Web App in Azure)
 - `infra/bicep/` — Service Bus, Function App, **two** Static Web Apps, Log Analytics / App Insights, optional APIM
 
-See `PROJECT.md` for architecture and decisions. Mermaid diagrams per product path: [`docs/azure-orchestration.md`](docs/azure-orchestration.md), [`docs/m365-orchestration.md`](docs/m365-orchestration.md).
+### Documentation
+
+| Doc | Content |
+|-----|---------|
+| [`PROJECT.md`](PROJECT.md) | Goals, architecture, IaC layout, decisions |
+| [`docs/web-apps.md`](docs/web-apps.md) | **Two Static Web Apps** — URLs, GitHub secrets, `VITE_*`, resume email, local ports |
+| [`docs/azure-orchestration.md`](docs/azure-orchestration.md) | Azure Durable flow (Mermaid) |
+| [`docs/m365-orchestration.md`](docs/m365-orchestration.md) | Microsoft 365 Durable flow (Mermaid) |
 
 ### Orchestration monitor (second Static Web App)
 
-Bicep deploys a **second** Static Web App (`*-monswa-*`) for **`frontend-monitor`**. It calls **`GET /api/orchestration-monitor`** on the same Function App (`DurableClient.getStatusAll()`). CI sets **`VITE_FORM_APP_BASE_URL`** to the **form** SWA URL so **Open form** / resume links point at the primary site. Optional app setting **`MONITOR_DASHBOARD_KEY`**: when set, send header **`X-Monitor-Key`** (the monitor UI can paste it once; stored in `sessionStorage`). Not a full [Durable Functions Monitor](https://github.com/microsoft/DurableFunctionsMonitor) (Gantt, history).
-
-If **`VITE_API_BASE_URL`** points only at **API Management** and the template exposes just `/submit`, add APIM routes for **`/orchestration-monitor`**, **`/orchestration-status`**, **`/correction`**, or call the Function App host for those paths.
+Summary: separate hostname from the form app; build output from **`frontend-monitor/`**; **`GET /api/orchestration-monitor`**; optional **`MONITOR_DASHBOARD_KEY`**; not the full [Durable Functions Monitor](https://github.com/microsoft/DurableFunctionsMonitor). **Details:** [`docs/web-apps.md`](docs/web-apps.md). APIM: expose **`/orchestration-monitor`**, **`/orchestration-status`**, **`/correction`** (or call the Function App host directly).

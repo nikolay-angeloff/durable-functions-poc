@@ -20,7 +20,18 @@ A demonstration app on Azure that showcases **Durable Functions** (orchestration
 
 ## 3. Functional requirements
 
-### 3.1 Form (React)
+### 3.1 Web tier — two Static Web Apps
+
+The repo ships **two separate React SPAs**, each deployed to its **own** Azure Static Web App (different URLs):
+
+| SPA | Purpose |
+|-----|---------|
+| **Form** (`frontend/`) | Submit workflow, poll orchestration status, submit corrections, resume via `?correlationId=` |
+| **Monitor** (`frontend-monitor/`) | Read-only list of Durable instances (`GET /api/orchestration-monitor`); “Open form” links target the **form** SWA URL (`VITE_FORM_APP_BASE_URL` at build time) |
+
+Both apps call the **same** Function App HTTP API (`VITE_API_BASE_URL`). See **[docs/web-apps.md](docs/web-apps.md)** for secrets, ports, and resume-email behaviour.
+
+### 3.2 Form fields (React)
 
 Four fields:
 
@@ -31,7 +42,7 @@ Four fields:
 | Phone | phone |
 | Choice | radio: **Azure** \| **M365** |
 
-### 3.2 Submit behavior (logical)
+### 3.3 Submit behavior (logical)
 
 1. The frontend **does not** call Durable orchestrations directly. It sends data to the **backend API** (via APIM).
 2. The backend (one **HTTP-triggered Function** or a minimal endpoint) **validates** input and publishes a **message to the correct Service Bus queue** (or subscription) for **Azure** vs **M365** — see §4 and §5.
@@ -70,7 +81,7 @@ For a demo, **Option B** is often clearer; **Option A** uses fewer resources.
 
 Correction handling (Service Bus `correction-needed`, `waitForExternalEvent`, Table Storage, HTTP poll/submit) is parallel in structure but **not** shared code — each orchestration is implemented independently in `azureOrchestration.ts` / `m365Orchestration.ts`.
 
-On failure each flow publishes to **`correction-needed`** with **`flow: azure | m365`** in the message body and **custom status** includes `flow` for the UI. The SPA **polls** `GET /api/orchestration-status` and submits corrections via **`POST /api/correction`** (`raiseEvent`). **Table Storage** maps `correlationId` → `instanceId`. За Azure при паралелен fail **custom status** може да съдържа **`aggregatedFailures`** (всички грешки наведнъж).
+On failure each flow publishes to **`correction-needed`** with **`flow: azure | m365`** in the message body and **custom status** includes `flow` for the UI. The **form** SPA **polls** `GET /api/orchestration-status` and submits corrections via **`POST /api/correction`** (`raiseEvent`). **Table Storage** maps `correlationId` → `instanceId`. For Azure parallel failures, **custom status** may include **`aggregatedFailures`**. The **monitor** SPA is optional tooling and uses **`GET /api/orchestration-monitor`** (admin-style listing); it does not replace the form for corrections.
 
 ---
 
@@ -96,7 +107,7 @@ Minimum resource set in templates:
 | Function App + plan | Durable + HTTP + Service Bus triggers |
 | Service Bus namespace | **two queues** (or topic + two subscriptions) for Azure vs M365 |
 | API Management | gateway |
-| **Azure Static Web Apps** | React (confirmed for this demo) |
+| **Azure Static Web Apps (×2)** | **Form** SPA + **monitor** SPA — separate hostnames (`*-swa-*` and `*-monswa-*` in Bicep) |
 | (optional) Key Vault | secrets (connection strings, SendGrid key) |
 | Application Insights | observability |
 
@@ -107,15 +118,14 @@ Parameters: **single demo** environment, names, APIM SKU.
 ## 7. GitHub Actions — build and deploy
 
 - **Triggers:** `push` to `main` / `release` tags (per your policy).
-- **Steps (conceptual):**
-  1. Checkout, setup Node (version pinned in `.nvmrc` or `package.json` engines).
-  2. `npm ci` / `npm run build` for React.
-  3. Build Functions (**Node.js / TypeScript** with Durable Functions extension).
-  4. Deploy infrastructure: `az deployment` with Bicep **or** Terraform apply with remote state (Storage).
-  5. Deploy Function App (zip deploy / `func azure functionapp publish` / Oryx).
-  6. Deploy static assets (SWA GitHub Action **or** upload to Storage + CDN purge).
+- **Steps (as implemented):**
+  1. Checkout, setup Node.
+  2. `az login` (service principal), **Bicep** deploy to resource group.
+  3. Build & publish **Functions** (`func azure functionapp publish`).
+  4. `npm ci` / `npm run build` for **`frontend/`** (form) and **`frontend-monitor/`** (monitor); production env: `VITE_API_BASE_URL`, and for the monitor build **`VITE_FORM_APP_BASE_URL`** = `https://<form SWA hostname>` from deployment outputs.
+  5. **Two** Azure Static Web Apps deploy steps: **`AZURE_STATIC_WEB_APPS_API_TOKEN`** (form dist) and **`AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN`** (monitor dist).
 
-**GitHub secrets:** `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` (workflow uses `az login --service-principal` in a shell step). Other secrets as needed — not in the repo.
+**GitHub secrets (minimum):** `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, **`AZURE_STATIC_WEB_APPS_API_TOKEN`**, **`AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN`**, optional **`VITE_API_BASE_URL`**. See [docs/web-apps.md](docs/web-apps.md) and [README.md](README.md).
 
 ---
 
@@ -144,7 +154,7 @@ Parameters: **single demo** environment, names, APIM SKU.
 |-------|--------|
 | **Functions runtime** | **Node.js / TypeScript** (Durable Functions) |
 | **Email** | **Transactional** (**SendGrid** or **Azure Communication Services**) for **both** “Azure” and “M365” form options |
-| **Static frontend** | **Azure Static Web Apps** |
+| **Static frontend** | **Azure Static Web Apps** — **two** apps (form + monitor); separate deployment tokens |
 | **Service Bus shape** | **Two** queues or **two** topic subscriptions — separate triggers per product path |
 | **Environments** | **Single demo** — one resource group (prod-like for the PoC) |
 
@@ -157,13 +167,17 @@ Implemented layout for **one** demo environment (consolidated template; can be s
 ```
 infra/
   bicep/
-    main.bicep                 # Service Bus, Function App, SWA, Log Analytics, App Insights, optional APIM
+    main.bicep                 # Service Bus, Function App, two SWAs, Log Analytics, App Insights, optional APIM
     parameters/
       demo.bicepparam          # Bicep parameter file (using)
       demo.parameters.json     # JSON parameters (CLI / Actions)
+docs/
+  web-apps.md                  # Two SPAs, URLs, secrets, env vars
+  azure-orchestration.md       # Azure Durable flow (Mermaid)
+  m365-orchestration.md        # M365 Durable flow (Mermaid)
 ```
 
-- **`main.bicep`** wires dependencies and exposes **outputs** (function app name, SWA hostname, optional APIM URLs) for GitHub Actions.
+- **`main.bicep`** exposes **outputs**: function app name/host, **both** SWA hostnames (`staticWebAppHostname`, `staticWebAppMonitorHostname`), optional APIM URLs.
 - **Secrets** are not committed: set SendGrid and other keys on the Function App after deploy, or use Key Vault + pipeline parameters.
 - **CI:** `az deployment group create` with `main.bicep` + `parameters/demo.parameters.json`.
 

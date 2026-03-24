@@ -151,3 +151,7 @@ sequenceDiagram
 
   Orch->>Act: sendEmail
 ```
+
+## Уеб тир (форма vs монитор)
+
+Корекциите и polling-ът към **`/orchestration-status`** са в **формата** SPA. Отделно **второ** Static Web App хоства монитора (`/api/orchestration-monitor`) — различен URL. Подробности: **[web-apps.md](web-apps.md)**.

@@ -1,13 +1,14 @@
 import { app, HttpRequest, InvocationContext } from "@azure/functions";
-import { ServiceBusClient } from "@azure/service-bus";
-import { QUEUE_AZURE, QUEUE_M365 } from "../lib/constants";
+import * as df from "durable-functions";
 import { corsHeaders } from "../lib/cors";
-import { formSubmissionSchema } from "../lib/types";
+import { getInstanceIdForCorrelation } from "../lib/correlationTable";
+import { correctionSubmitSchema } from "../lib/types";
 
-app.http("submitForm", {
+app.http("submitCorrection", {
     methods: ["POST", "OPTIONS"],
-    route: "submit",
+    route: "correction",
     authLevel: "anonymous",
+    extraInputs: [df.input.durableClient()],
     handler: async (request: HttpRequest, context: InvocationContext) => {
         const origin = request.headers.get("origin") ?? undefined;
 
@@ -26,7 +27,7 @@ app.http("submitForm", {
             };
         }
 
-        const parsed = formSubmissionSchema.safeParse(json);
+        const parsed = correctionSubmitSchema.safeParse(json);
         if (!parsed.success) {
             return {
                 status: 400,
@@ -35,30 +36,26 @@ app.http("submitForm", {
             };
         }
 
-        const conn = process.env.ServiceBusConnection;
-        if (!conn) {
-            context.error("ServiceBusConnection is not configured");
+        const { correlationId, ...rest } = parsed.data;
+        const instanceId = await getInstanceIdForCorrelation(correlationId);
+        if (!instanceId) {
             return {
-                status: 500,
+                status: 404,
                 headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
-                jsonBody: { error: "Server configuration error" },
+                jsonBody: { error: "Unknown correlationId" },
             };
         }
 
-        const queueName = parsed.data.product === "azure" ? QUEUE_AZURE : QUEUE_M365;
-        const client = new ServiceBusClient(conn);
-        try {
-            const sender = client.createSender(queueName);
-            await sender.sendMessages({ body: parsed.data, contentType: "application/json" });
-            await sender.close();
-        } finally {
-            await client.close();
-        }
+        const client = df.getClient(context);
+        await client.raiseEvent(instanceId, "CorrectionSubmitted", {
+            ...rest,
+            correctionConfirmed: rest.correctionConfirmed ?? true,
+        });
 
         return {
             status: 202,
             headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
-            jsonBody: { accepted: true, queue: queueName },
+            jsonBody: { accepted: true, instanceId },
         };
     },
 });

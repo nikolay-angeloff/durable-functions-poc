@@ -46,4 +46,4 @@ Set `deployApim: true` in parameters for API Management (first activation can ta
 - `frontend/` — Vite + React
 - `infra/bicep/` — Service Bus, Function App, Log Analytics / App Insights, Static Web App, optional APIM
 
-See `PROJECT.md` for architecture and decisions.
+See `PROJECT.md` for architecture and decisions. Mermaid diagrams per product path: [`docs/azure-orchestration.md`](docs/azure-orchestration.md), [`docs/m365-orchestration.md`](docs/m365-orchestration.md).

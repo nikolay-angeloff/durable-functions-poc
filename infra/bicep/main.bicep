@@ -95,6 +95,14 @@ resource queueM365 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' =
   }
 }
 
+resource queueCorrectionNeeded 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
+  parent: serviceBusNamespace
+  name: 'correction-needed'
+  properties: {
+    maxDeliveryCount: 10
+  }
+}
+
 resource sbAuth 'Microsoft.ServiceBus/namespaces/authorizationRules@2022-10-01-preview' existing = {
   parent: serviceBusNamespace
   name: 'RootManageSharedAccessKey'

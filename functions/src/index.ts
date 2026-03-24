@@ -1,6 +1,12 @@
+import "./activities/registerCorrelation";
+import "./activities/mockAzureSteps";
+import "./activities/mockM365Steps";
+import "./activities/publishCorrectionNotification";
 import "./activities/sendEmail";
 import "./orchestrations/azureOrchestration";
 import "./orchestrations/m365Orchestration";
 import "./functions/azureQueueTrigger";
 import "./functions/m365QueueTrigger";
 import "./functions/submitForm";
+import "./functions/orchestrationStatus";
+import "./functions/submitCorrection";

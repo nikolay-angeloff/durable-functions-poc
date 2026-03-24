@@ -27,9 +27,12 @@ df.app.activity("sendEmail", {
                 ``,
                 `Your ${productLabel} request was processed.`,
                 `Phone on file: ${input.phone}`,
+                input.correctionNote ? `Note: ${input.correctionNote}` : ``,
                 ``,
                 `This is a demo message from Azure Durable Functions.`,
-            ].join("\n"),
+            ]
+                .filter(Boolean)
+                .join("\n"),
         });
 
         return { sent: true };

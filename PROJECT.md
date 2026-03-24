@@ -36,7 +36,7 @@ Four fields:
 1. The frontend **does not** call Durable orchestrations directly. It sends data to the **backend API** (via APIM).
 2. The backend (one **HTTP-triggered Function** or a minimal endpoint) **validates** input and publishes a **message to the correct Service Bus queue** (or subscription) for **Azure** vs **M365** — see §4 and §5.
 3. A **separate** Function (trigger: **Service Bus**) starts a **Durable orchestration** (or two different orchestrations depending on “Azure” / “M365” — see §4).
-4. For now: **one activity per flow** inside the orchestration; steps will be extended later.
+4. The orchestration runs **multiple mock steps** with optional **human correction** (Service Bus notification + external event); see **§4.1**.
 5. When the flow **completes**: send an **email** via a **transactional provider** (**SendGrid** or **Azure Communication Services**) for **both** radio options; the “Azure” / “M365” choice only affects which Durable path runs, not the mail provider.
 
 The form is thereby **decoupled** from long-running work and from email: it only initiates asynchronous work through a queue.
@@ -45,39 +45,10 @@ The form is thereby **decoupled** from long-running work and from email: it only
 
 ## 4. Proposed architecture (logical flow)
 
-```mermaid
-flowchart LR
-  subgraph Edge["User / Edge"]
-    U[Browser]
-    CDN[Static host / SWA / Front Door]
-  end
+Mermaid диаграми (end-to-end, Durable flowchart и sequence) са в отделни файлове:
 
-  subgraph APIM["API tier"]
-    GW[API Management]
-  end
-
-  subgraph Backend["Azure Functions"]
-    HTTPFn[HTTP Function - form intake]
-    SBFn[Service Bus trigger Function]
-    Durable[Durable orchestrations]
-  end
-
-  subgraph Messaging["Messaging"]
-    SB[(Service Bus)]
-  end
-
-  subgraph Mail["Output"]
-    EM[Email - SendGrid / ACS]
-  end
-
-  U --> CDN
-  CDN --> GW
-  GW --> HTTPFn
-  HTTPFn --> SB
-  SB --> SBFn
-  SBFn --> Durable
-  Durable --> EM
-```
+- **[Azure — `azureOrchestration`](docs/azure-orchestration.md)** — паралелни `validate` ∥ `enrich`, join с агрегирани грешки, после `approve`.
+- **[Microsoft 365 — `m365Orchestration`](docs/m365-orchestration.md)** — последователни стъпки `tenantReadiness` → `licenseCheck` → `consentGate`.
 
 **Two flows:** Implementation options:
 
@@ -87,6 +58,19 @@ flowchart LR
 For a demo, **Option B** is often clearer; **Option A** uses fewer resources.
 
 **Chosen:** **Option B** — two separate queues (or two topic subscriptions) and two `ServiceBusTrigger` functions (one for “Azure”, one for “M365”).
+
+### 4.1 Durable workflow — mock steps, Service Bus on failure, human correction
+
+**Two separate orchestrations** (different files, activities, and step names):
+
+| Flow | Orchestrator | Mock activity | Steps (order) |
+|------|--------------|---------------|-----------------|
+| **Azure** | `azureOrchestration` | `mockAzureStep` | **`validate` ∥ `enrich`** (parallel, join) → **`approve`** (sequential) |
+| **Microsoft 365** | `m365Orchestration` | `mockM365Step` | `tenantReadiness` → `licenseCheck` → `consentGate` |
+
+Correction handling (Service Bus `correction-needed`, `waitForExternalEvent`, Table Storage, HTTP poll/submit) is parallel in structure but **not** shared code — each orchestration is implemented independently in `azureOrchestration.ts` / `m365Orchestration.ts`.
+
+On failure each flow publishes to **`correction-needed`** with **`flow: azure | m365`** in the message body and **custom status** includes `flow` for the UI. The SPA **polls** `GET /api/orchestration-status` and submits corrections via **`POST /api/correction`** (`raiseEvent`). **Table Storage** maps `correlationId` → `instanceId`. За Azure при паралелен fail **custom status** може да съдържа **`aggregatedFailures`** (всички грешки наведнъж).
 
 ---
 

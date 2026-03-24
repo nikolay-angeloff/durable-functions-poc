@@ -1,0 +1,1 @@
+; Used as NPM_CONFIG_USERCONFIG in GitHub Actions so runner/org ~/.npmrc (Nexus, etc.) is ignored.

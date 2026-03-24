@@ -20,6 +20,8 @@ param webAppBaseUrl string = ''
 var suffix = uniqueString(resourceGroup().id, baseName)
 var storageName = toLower(take('st${baseName}${suffix}', 24))
 var funcAppName = '${baseName}-func-${suffix}'
+// JSON array for FUNCTIONS host CORS (Linux Consumption often ignores Portal/siteConfig.cors for preflight).
+var corsAllowedOriginsJson = '["https://${swa.properties.defaultHostname}","https://${swaMonitor.properties.defaultHostname}","http://localhost:5173","http://127.0.0.1:5173"]'
 var sbNamespaceName = '${baseName}-sb-${suffix}'
 var swaName = '${baseName}-swa-${suffix}'
 var swaMonitorName = '${baseName}-monswa-${suffix}'
@@ -168,6 +170,18 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'SENDGRID_FROM_EMAIL'
           value: 'noreply@example.com'
+        }
+        {
+          name: 'FUNCTIONS_ENABLE_CORS_CONFIGURATION'
+          value: '1'
+        }
+        {
+          name: 'CORS_ALLOWED_ORIGINS'
+          value: corsAllowedOriginsJson
+        }
+        {
+          name: 'CORS_SUPPORT_CREDENTIALS'
+          value: 'false'
         }
         {
           name: 'CORS_ALLOW_ORIGIN'

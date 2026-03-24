@@ -16,6 +16,9 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Ignore runner ~/.npmrc (org/self-hosted runners often inject a Nexus registry there).
+      NPM_CONFIG_USERCONFIG: ${{ github.workspace }}/.npmrc.ci-user
     steps:
       - name: Checkout
         uses: actions/checkout@v4

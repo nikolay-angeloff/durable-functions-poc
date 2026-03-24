@@ -1,4 +1,6 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, lazy, Suspense, useCallback, useEffect, useState } from "react";
+
+const InstanceDetailPanel = lazy(() => import("./InstanceDetailPanel"));
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 const formAppBase = import.meta.env.VITE_FORM_APP_BASE_URL ?? "";
@@ -45,6 +47,7 @@ export default function MonitorDashboard() {
     const [err, setErr] = useState<string | null>(null);
     const [limit, setLimit] = useState(50);
     const [accessKey, setAccessKey] = useState(() => sessionStorage.getItem("monitorDashboardKey") ?? "");
+    const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -137,18 +140,22 @@ export default function MonitorDashboard() {
                             <th>Email</th>
                             <th>Updated</th>
                             <th>Resume</th>
+                            <th>Charts</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.length === 0 && !loading ? (
                             <tr>
-                                <td colSpan={7} className="monitor-empty">
+                                <td colSpan={8} className="monitor-empty">
                                     No rows (or empty hub).
                                 </td>
                             </tr>
                         ) : (
                             rows.map((r) => (
-                                <tr key={r.instanceId}>
+                                <tr
+                                    key={r.instanceId}
+                                    className={selectedInstanceId === r.instanceId ? "row-selected" : undefined}
+                                >
                                     <td>
                                         <code>{r.runtimeStatus}</code>
                                     </td>
@@ -164,12 +171,35 @@ export default function MonitorDashboard() {
                                             "—"
                                         )}
                                     </td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            className="btn-linkish"
+                                            onClick={() =>
+                                                setSelectedInstanceId((cur) =>
+                                                    cur === r.instanceId ? null : r.instanceId
+                                                )
+                                            }
+                                        >
+                                            {selectedInstanceId === r.instanceId ? "Hide" : "View"}
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {selectedInstanceId && (
+                <Suspense fallback={<p className="meta">Loading charts…</p>}>
+                    <InstanceDetailPanel
+                        instanceId={selectedInstanceId}
+                        accessKey={accessKey}
+                        onClose={() => setSelectedInstanceId(null)}
+                    />
+                </Suspense>
+            )}
         </>
     );
 }

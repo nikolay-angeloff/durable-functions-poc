@@ -73,4 +73,4 @@ Opening that URL loads the SPA with the same **correlation / inquiry ID** and st
 
 ### Orchestration monitor (second Static Web App)
 
-Summary: separate hostname from the form app; build output from **`frontend-monitor/`**; **`GET /api/orchestration-monitor`**; optional **`MONITOR_DASHBOARD_KEY`**; not the full [Durable Functions Monitor](https://github.com/microsoft/DurableFunctionsMonitor). **Details:** [`docs/web-apps.md`](docs/web-apps.md). APIM: expose **`/orchestration-monitor`**, **`/orchestration-status`**, **`/correction`** (or call the Function App host directly).
+Summary: separate hostname from the form app; build output from **`frontend-monitor/`**; **`GET /api/orchestration-monitor`** (list) and **`GET /api/orchestration-monitor-detail?instanceId=`** (history + parsed flow for charts); optional **`MONITOR_DASHBOARD_KEY`**; not the full [Durable Functions Monitor](https://github.com/microsoft/DurableFunctionsMonitor). **Details:** [`docs/web-apps.md`](docs/web-apps.md). APIM: expose **`/orchestration-monitor`**, **`/orchestration-monitor-detail`**, **`/orchestration-status`**, **`/correction`** (or call the Function App host directly).

@@ -5,9 +5,9 @@
 | Приложение | Папка в repo | Bicep име (шаблон) | Роля |
 |------------|--------------|---------------------|------|
 | **Форма** | `frontend/` | `*-swa-*` | Подаване на заявка, polling на `GET /api/orchestration-status`, корекции през `POST /api/correction`, resume от имейл (`?correlationId=`). |
-| **Монитор** | `frontend-monitor/` | `*-monswa-*` | Таблица с оркестрации през `GET /api/orchestration-monitor`; линк **Open form** сочи към URL-а на **формата** (`VITE_FORM_APP_BASE_URL`). |
+| **Монитор** | `frontend-monitor/` | `*-monswa-*` | Списък през `GET /api/orchestration-monitor`; детайл с история и графики през `GET /api/orchestration-monitor-detail?instanceId=` (Durable `showHistory`); линк **Open form** към **формата** (`VITE_FORM_APP_BASE_URL`). |
 
-И двете SPAs викат **същия** HTTP API (Azure Function App), зададен с **`VITE_API_BASE_URL`** при build (напр. `https://<function-app>.azurewebsites.net/api` или APIM).
+И двете SPAs викат **същия** HTTP API (Azure Function App), зададен с **`VITE_API_BASE_URL`** при build (напр. `https://<function-app>.azurewebsites.net/api` или APIM). Мониторът допълнително зарежда **пълната Durable история** за избран instance (таблица + bar chart за продължителност на activities + line chart по време на събитията).
 
 ## URL-и след deploy
 
@@ -55,4 +55,4 @@
 
 ## APIM
 
-Ако клиентът ползва само gateway и са отворени само част от пътищата, трябва да са достъпни и **`/orchestration-monitor`**, **`/orchestration-status`**, **`/correction`** (или директно към host на Function App за тези маршрути).
+Ако клиентът ползва само gateway и са отворени само част от пътищата, трябва да са достъпни и **`/orchestration-monitor`**, **`/orchestration-monitor-detail`**, **`/orchestration-status`**, **`/correction`** (или директно към host на Function App за тези маршрути).

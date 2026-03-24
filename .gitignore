@@ -1,0 +1,7 @@
+node_modules
+**/dist
+local.settings.json
+*.zip
+.azure
+.DS_Store
+infra/bicep/main.json

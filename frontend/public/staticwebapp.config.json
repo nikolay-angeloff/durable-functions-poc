@@ -1,0 +1,6 @@
+{
+  "navigationFallback": {
+    "fallback": "/index.html",
+    "exclude": ["/assets/*"]
+  }
+}

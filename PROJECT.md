@@ -131,7 +131,7 @@ Parameters: **single demo** environment, names, APIM SKU.
   5. Deploy Function App (zip deploy / `func azure functionapp publish` / Oryx).
   6. Deploy static assets (SWA GitHub Action **or** upload to Storage + CDN purge).
 
-**GitHub secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_SECRET` (service principal), plus `AZURE_RESOURCE_GROUP` and others — not in the repo. Alternative: single JSON `AZURE_CREDENTIALS` if you configure `azure/login` with `creds:` instead.
+**GitHub secrets:** `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` (workflow uses `az login --service-principal` in a shell step). Other secrets as needed — not in the repo.
 
 ---
 

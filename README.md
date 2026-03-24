@@ -6,7 +6,17 @@ React form → HTTP Function → **Service Bus** (two queues) → **Durable orch
 
 - Azure subscription, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install#azure-cli) (`az bicep install`)
 - Resource group (e.g. `az group create -n rg-durable-demo -l westeurope`)
-- GitHub secrets (see below): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_SECRET`, `AZURE_RESOURCE_GROUP`
+- GitHub secrets (repository **Actions** secrets):
+
+| Secret | Value |
+|--------|--------|
+| `AZURE_CLIENT_ID` | Application (client) ID |
+| `AZURE_CLIENT_SECRET` | Client secret **value** (not the secret ID) |
+| `AZURE_TENANT_ID` | Directory (tenant) ID |
+| `AZURE_SUBSCRIPTION_ID` | Subscription ID |
+| `AZURE_RESOURCE_GROUP` | Resource group name (e.g. `rg-durable-demo`) |
+
+The workflow runs **`az login --service-principal`** on the runner (no `azure/login` action JSON). Optional: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `VITE_API_BASE_URL`.
 - Optional: `AZURE_STATIC_WEB_APPS_API_TOKEN` (Static Web App deployment token; workflow step uses `continue-on-error` if missing), `VITE_API_BASE_URL` for the production build:
   - **API Management:** `https://<apim-name>.azure-api.net` (the template exposes `/submit` at the gateway root).
   - **Function App only (no APIM):** `https://<function-app>.azurewebsites.net/api` (must include the `/api` prefix so the client calls `.../api/submit`).

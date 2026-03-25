@@ -217,3 +217,96 @@ code {
   font-size: 0.75rem;
   word-break: break-word;
 }
+
+/* React Flow workflow chart */
+.wf-wrap {
+  margin-bottom: 1.5rem;
+}
+
+.wf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.wf-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 2px solid transparent;
+}
+
+.wf-canvas {
+  height: 460px;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fafbfc;
+}
+
+.wf-canvas .react-flow {
+  --xy-node-border-default: #cbd5e0;
+}
+
+.wf-minimap {
+  border-radius: 6px;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.wf-unavailable {
+  font-size: 0.9rem;
+  color: #555;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e0;
+}
+
+.wf-node {
+  min-width: 118px;
+  max-width: 160px;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+  border: 2px solid #94a3b8;
+  background: #f1f5f9;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.wf-node-label {
+  white-space: pre-line;
+}
+
+.wf-node--pending {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.wf-node--success {
+  border-color: #059669;
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.wf-node--waiting {
+  border-color: #ea580c;
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.wf-node--failed {
+  border-color: #dc2626;
+  background: #fee2e2;
+  color: #991b1b;
+}

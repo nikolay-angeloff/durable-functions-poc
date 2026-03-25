@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import WorkflowFlowchart from "./WorkflowFlowchart";
 import {
     Bar,
     BarChart,
@@ -121,6 +122,21 @@ export default function InstanceDetailPanel({ instanceId, accessKey, onClose }: 
                             {JSON.stringify(data.customStatus ?? null, null, 2)}
                         </pre>
                     </div>
+
+                    <h3>Workflow map</h3>
+                    <p className="lede small">
+                        Template + live colours from history and custom status.{" "}
+                        <a href="https://reactflow.dev/" rel="noreferrer">
+                            React Flow
+                        </a>
+                        .
+                    </p>
+                    <WorkflowFlowchart
+                        orchestratorName={data.orchestratorName}
+                        runtimeStatus={data.runtimeStatus}
+                        customStatus={data.customStatus}
+                        flowSteps={data.parsed?.flowSteps ?? []}
+                    />
 
                     <h3>Flow (where it passed)</h3>
                     <ol className="flow-steps">

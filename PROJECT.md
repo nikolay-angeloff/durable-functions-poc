@@ -133,7 +133,7 @@ Parameters: **single demo** environment, names, APIM SKU.
 
 - **APIM cold start / cost** — for a PoC use a lower SKU or temporarily call the Function over HTTPS directly (dev only), then add APIM.
 - **Durable + Service Bus** — idempotency on message retries (optional duplicate detection in Service Bus).
-- **Email** — **Azure Communication Services Email**; connection string / sender in Key Vault / App settings.
+- **Email** — **Azure Communication Services Email**; Bicep deploys Email Communication Service (Azure Managed domain + sender) + Communication Services and sets Function App settings; optional GitHub secrets override in CI.
 
 ---
 
@@ -167,7 +167,7 @@ Implemented layout for **one** demo environment (consolidated template; can be s
 ```
 infra/
   bicep/
-    main.bicep                 # Service Bus, Function App, two SWAs, Log Analytics, App Insights, optional APIM
+    main.bicep                 # Service Bus, Function App, ACS Email + Communication Services, two SWAs, Log Analytics, App Insights, optional APIM
     parameters/
       demo.bicepparam          # Bicep parameter file (using)
       demo.parameters.json     # JSON parameters (CLI / Actions)
@@ -178,7 +178,7 @@ docs/
 ```
 
 - **`main.bicep`** exposes **outputs**: function app name/host, **both** SWA hostnames (`staticWebAppHostname`, `staticWebAppMonitorHostname`), optional APIM URLs.
-- **Secrets** are not committed: set ACS Email and other keys on the Function App after deploy, or use Key Vault + pipeline parameters.
+- **Secrets** are not committed: ACS connection string is injected by Bicep; optional pipeline secrets override; other keys (Service Bus, etc.) come from the template.
 - **CI:** `az deployment group create` with `main.bicep` + `parameters/demo.parameters.json`.
 
 The same structure can map to **Terraform** (`infra/terraform/modules/...`, `environments/demo/terraform.tfvars`) if you standardize on Terraform instead of Bicep.

@@ -5,6 +5,7 @@ React **form** + separate **monitor** SPA → HTTP Function → **Service Bus** 
 ## Prerequisites
 
 - Azure subscription, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install#azure-cli) (`az bicep install`)
+- Resource provider **`Microsoft.Communication`** registered (`az provider register -n Microsoft.Communication --wait`) if the subscription never used Communication Services before.
 - Resource group (e.g. `az group create -n rg-durable-demo -l westeurope`)
 - GitHub secrets (repository **Actions** secrets):
 
@@ -18,11 +19,21 @@ React **form** + separate **monitor** SPA → HTTP Function → **Service Bus** 
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment token for the **form** Static Web App (Portal → SWA → *Manage deployment token*) |
 | `AZURE_STATIC_WEB_APPS_MONITOR_API_TOKEN` | Deployment token for the **monitor** Static Web App (second SWA, name `*-monswa-*`) |
 | `VITE_API_BASE_URL` | Optional in CI; base URL for API calls in both SPAs (see below) |
+| `ACS_CONNECTION_STRING` | **Optional:** overrides Function App mail settings from Bicep (rotation / custom ACS). If unset, IaC values stay. |
+| `ACS_EMAIL_SENDER` | **Optional:** overrides sender; use with `ACS_CONNECTION_STRING`. |
 
 The workflow runs **`az login --service-principal`**. Both SWA tokens are **required** for deploy (otherwise `deployment_token was not provided`). **`VITE_API_BASE_URL`** for production builds:
 
 - **API Management:** `https://<apim-name>.azure-api.net` (template exposes `/submit` at the gateway root).
 - **Function App only (no APIM):** `https://<function-app>.azurewebsites.net/api` (must include `/api` so the client calls `.../api/submit`, `.../api/orchestration-monitor`, etc.).
+
+### Email (IaC + optional pipeline override)
+
+**Bicep** creates **Azure Communication Services** end-to-end: **Email Communication Service**, **Azure Managed Domain**, **DoNotReply** sender username, **Communication Services** (linked domain), and sets **`AZURE_COMMUNICATION_CONNECTION_STRING`** and **`ACS_EMAIL_SENDER`** on the Function App from the deployed resources (see `infra/bicep/main.bicep`). Parameter **`acsDataLocation`** (default `Europe`) controls data residency.
+
+**GitHub secrets** `ACS_CONNECTION_STRING` and `ACS_EMAIL_SENDER` are **optional**. If **both** are set, the workflow step **Configure Function App — ACS Email** overwrites the Function App settings (useful for key rotation or pointing at another ACS resource). If either is missing, the step is skipped and **Bicep values remain**.
+
+To override manually: GitHub → **Settings** → **Secrets and variables** → **Actions** → add both secrets → push or **Run workflow**. The service principal needs permission to update app settings (**Contributor** on the resource group is enough).
 
 ## Local development
 
@@ -42,7 +53,7 @@ az deployment group create \
   --parameters @infra/bicep/parameters/demo.parameters.json
 ```
 
-Set `deployApim: true` in parameters for API Management (first activation can take 30+ minutes). Configure **Azure Communication Services Email** on the Function App: `AZURE_COMMUNICATION_CONNECTION_STRING` (from the Communication resource **Keys**) and `ACS_EMAIL_SENDER` (a verified sender address from **Email** → try Azure-managed domain first). See [Send email with ACS](https://learn.microsoft.com/azure/communication-services/quickstarts/email/send-email).
+Set `deployApim: true` in parameters for API Management (first activation can take 30+ minutes). **Email** is provisioned by Bicep (ACS Email + Communication Services); override **`acsDataLocation`** in parameters if needed. See [Send email with ACS](https://learn.microsoft.com/azure/communication-services/quickstarts/email/send-email).
 
 ### Correction pause — resume link email
 

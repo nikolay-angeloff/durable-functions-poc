@@ -17,6 +17,9 @@ param deployApim bool = true
 @description('Public URL of the SPA for correction resume emails (WEB_APP_BASE_URL). No trailing slash. Leave empty to use https://<deployed Static Web App default hostname>.')
 param webAppBaseUrl string = ''
 
+@description('Where ACS stores data at rest (e.g. Europe, United States). See Communication Services docs for allowed values.')
+param acsDataLocation string = 'Europe'
+
 var suffix = uniqueString(resourceGroup().id, baseName)
 var storageName = toLower(take('st${baseName}${suffix}', 24))
 var funcAppName = '${baseName}-func-${suffix}'
@@ -118,6 +121,51 @@ var serviceBusConnectionString = sbAuth.listKeys().primaryConnectionString
 
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 
+/** Email Communication Service + Azure Managed domain + sender (DoNotReply). */
+resource acsEmail 'Microsoft.Communication/emailServices@2023-04-01' = {
+  name: '${baseName}-email-${suffix}'
+  location: 'global'
+  properties: {
+    dataLocation: acsDataLocation
+  }
+}
+
+resource acsEmailDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
+  parent: acsEmail
+  name: 'AzureManagedDomain'
+  location: 'global'
+  properties: {
+    domainManagement: 'AzureManaged'
+    userEngagementTracking: 'Disabled'
+  }
+}
+
+resource acsEmailSenderUser 'Microsoft.Communication/emailServices/domains/senderUsernames@2023-04-01' = {
+  parent: acsEmailDomain
+  name: 'donotreply'
+  properties: {
+    username: 'DoNotReply'
+    displayName: 'DoNotReply'
+  }
+}
+
+/** Keys for EmailClient; linkedDomains connects mail to this resource. */
+resource acsCommunication 'Microsoft.Communication/communicationServices@2023-04-01' = {
+  name: '${baseName}-acs-${suffix}'
+  location: 'global'
+  dependsOn: [
+    acsEmailSenderUser
+  ]
+  properties: {
+    dataLocation: acsDataLocation
+    linkedDomains: [
+      acsEmailDomain.id
+    ]
+  }
+}
+
+var acsEmailSenderAddress = 'DoNotReply@${acsEmailDomain.properties.mailFromSenderDomain}'
+
 resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   name: funcAppName
   location: location
@@ -165,11 +213,11 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         }
         {
           name: 'AZURE_COMMUNICATION_CONNECTION_STRING'
-          value: ''
+          value: acsCommunication.listKeys().primaryConnectionString
         }
         {
           name: 'ACS_EMAIL_SENDER'
-          value: ''
+          value: acsEmailSenderAddress
         }
         {
           name: 'FUNCTIONS_ENABLE_CORS_CONFIGURATION'
@@ -304,3 +352,6 @@ output serviceBusNamespace string = serviceBusNamespace.name
 output apimGatewayUrl string = deployApim ? 'https://${apimName}.azure-api.net' : ''
 output apimSubmitUrl string = deployApim ? 'https://${apimName}.azure-api.net/submit' : ''
 output applicationInsightsConnectionString string = appInsights.properties.ConnectionString
+output acsCommunicationServiceName string = acsCommunication.name
+output acsEmailServiceName string = acsEmail.name
+output acsEmailSenderAddress string = acsEmailSenderAddress

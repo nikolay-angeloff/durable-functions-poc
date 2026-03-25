@@ -86,6 +86,29 @@ jobs:
           echo "swa_name=$SWA_NAME" >> "$GITHUB_OUTPUT"
           echo "swa_monitor_name=$SWA_MON_NAME" >> "$GITHUB_OUTPUT"
 
+      # Values from repo secrets: Settings → Secrets and variables → Actions.
+      - name: Configure Function App — ACS Email (GitHub secrets)
+        env:
+          ACS_CONN: ${{ secrets.ACS_CONNECTION_STRING }}
+          ACS_SENDER: ${{ secrets.ACS_EMAIL_SENDER }}
+        run: |
+          set -euo pipefail
+          FUNC_NAME="${{ steps.infra.outputs.function_app }}"
+          RG="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          if [ -z "${ACS_CONN:-}" ] || [ -z "${ACS_SENDER:-}" ]; then
+            echo "::notice::ACS_CONNECTION_STRING / ACS_EMAIL_SENDER not set — keeping Function App mail settings from Bicep (IaC). Set both secrets to override."
+            exit 0
+          fi
+          echo "::add-mask::${ACS_CONN}"
+          echo "::add-mask::${ACS_SENDER}"
+          az functionapp config appsettings set \
+            --name "$FUNC_NAME" \
+            --resource-group "$RG" \
+            --settings \
+              "AZURE_COMMUNICATION_CONNECTION_STRING=${ACS_CONN}" \
+              "ACS_EMAIL_SENDER=${ACS_SENDER}"
+          echo "ACS Email app settings applied to Function App."
+
       # Form + monitor SWA each need a deployment token. If both GitHub secrets are unset,
       # the logged-in service principal fetches them (no Portal copy). Set both secrets to override.
       - name: Resolve Static Web Apps deployment tokens

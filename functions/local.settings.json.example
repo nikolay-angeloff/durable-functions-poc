@@ -6,8 +6,8 @@
 
     "ServiceBusConnection": "Endpoint=sb://YOUR_NAMESPACE.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=...",
 
-    "SENDGRID_API_KEY": "",
-    "SENDGRID_FROM_EMAIL": "verified-sender@yourdomain.com",
+    "AZURE_COMMUNICATION_CONNECTION_STRING": "endpoint=https://YOUR_RESOURCE.communication.azure.com/;accesskey=...",
+    "ACS_EMAIL_SENDER": "DoNotReply@xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.azurecomm.net",
 
     "WEB_APP_BASE_URL": "https://victorious-ocean-036a1ed03.2.azurestaticapps.net",
 

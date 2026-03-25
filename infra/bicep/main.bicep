@@ -164,12 +164,12 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: serviceBusConnectionString
         }
         {
-          name: 'SENDGRID_API_KEY'
+          name: 'AZURE_COMMUNICATION_CONNECTION_STRING'
           value: ''
         }
         {
-          name: 'SENDGRID_FROM_EMAIL'
-          value: 'noreply@example.com'
+          name: 'ACS_EMAIL_SENDER'
+          value: ''
         }
         {
           name: 'FUNCTIONS_ENABLE_CORS_CONFIGURATION'

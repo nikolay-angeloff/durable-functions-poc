@@ -24,6 +24,13 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
     // Fan-out / fan-in: validate and enrich run in parallel; one inquiry with all failures.
     let parallelDone = false;
     while (!parallelDone) {
+        context.df.setCustomStatus({
+            flow: "azure",
+            waitingForCorrection: false,
+            phase: "parallelValidateEnrich",
+            currentStep: "parallelValidateEnrich",
+        });
+
         const tValidate = context.df.callActivity("mockAzureValidate", { form });
         const tEnrich = context.df.callActivity("mockAzureEnrich", { form });
         const batch = (yield context.df.Task.all([tValidate, tEnrich])) as MockApiResult[];
@@ -57,6 +64,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             flow: "azure",
             waitingForCorrection: true,
             phase: "parallelValidateEnrich",
+            currentStep: "parallelValidateEnrich",
             aggregatedFailures,
         });
 
@@ -74,6 +82,13 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
 
     // Sequential approve (single-step correction loop as before).
     const stepName = "approve";
+    context.df.setCustomStatus({
+        flow: "azure",
+        waitingForCorrection: false,
+        phase: "singleStep",
+        currentStep: stepName,
+    });
+
     let stepResult = (yield context.df.callActivity("mockAzureApprove", { form })) as MockApiResult;
 
     while (!stepResult.ok) {
@@ -91,6 +106,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             flow: "azure",
             waitingForCorrection: true,
             phase: "singleStep",
+            currentStep: stepName,
             failedStep: stepName,
             reason: stepResult.ok ? undefined : stepResult.error,
         });
@@ -106,6 +122,13 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             correlationId: form.correlationId,
         };
 
+        context.df.setCustomStatus({
+            flow: "azure",
+            waitingForCorrection: false,
+            phase: "singleStep",
+            currentStep: stepName,
+        });
+
         stepResult = (yield context.df.callActivity("mockAzureApprove", { form })) as MockApiResult;
     }
 
@@ -113,6 +136,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
         flow: "azure",
         waitingForCorrection: false,
         completedSteps: 3,
+        currentStep: "sendEmail",
     });
 
     return yield context.df.callActivity("sendEmail", form);

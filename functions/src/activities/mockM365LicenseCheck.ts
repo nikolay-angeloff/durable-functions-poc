@@ -1,6 +1,7 @@
 import { InvocationContext } from "@azure/functions";
 import * as df from "durable-functions";
 import type { FormSubmission, MockApiResult } from "../lib/types";
+import { demoStepDelayMs } from "../lib/demoStepDelay";
 
 function digitCount(s: string): number {
     return (s.match(/\d/g) ?? []).length;
@@ -12,6 +13,7 @@ df.app.activity("mockM365LicenseCheck", {
         input: { form: FormSubmission },
         context: InvocationContext
     ): Promise<MockApiResult> => {
+        await demoStepDelayMs();
         const { form } = input;
         context.log(`mockM365LicenseCheck for ${form.email}`);
 

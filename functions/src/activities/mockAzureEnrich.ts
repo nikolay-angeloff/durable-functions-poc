@@ -1,6 +1,7 @@
 import { InvocationContext } from "@azure/functions";
 import * as df from "durable-functions";
 import type { FormSubmission, MockApiResult } from "../lib/types";
+import { demoStepDelayMs } from "../lib/demoStepDelay";
 
 /** Mock enrichment / policy on display name (isolated activity). */
 df.app.activity("mockAzureEnrich", {
@@ -8,6 +9,7 @@ df.app.activity("mockAzureEnrich", {
         input: { form: FormSubmission },
         context: InvocationContext
     ): Promise<MockApiResult> => {
+        await demoStepDelayMs();
         const { form } = input;
         context.log(`mockAzureEnrich for ${form.email}`);
 

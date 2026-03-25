@@ -1,8 +1,8 @@
 import { InvocationContext } from "@azure/functions";
 import { ServiceBusClient } from "@azure/service-bus";
 import * as df from "durable-functions";
-import sgMail from "@sendgrid/mail";
 import { QUEUE_CORRECTION_NEEDED } from "../lib/constants";
+import { getAcsEmailConfig, sendAcsPlainTextEmail } from "../lib/acsEmail";
 import type { FormSubmission } from "../lib/types";
 
 export type PublishCorrectionInput = {
@@ -28,19 +28,19 @@ function buildResumeUrl(correlationId: string): string | undefined {
     return `${base}/?correlationId=${encodeURIComponent(correlationId)}`;
 }
 
-/** SendGrid email with SPA link ?correlationId=… so the user can open the app and continue the same inquiry. */
+/** ACS Email with SPA link ?correlationId=… so the user can open the app and continue the same inquiry. */
 async function sendCorrectionResumeEmail(
     input: PublishCorrectionInput,
     failedStep: string,
     context: InvocationContext
 ): Promise<void> {
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const from = process.env.SENDGRID_FROM_EMAIL;
     const to = input.form.email;
     const resumeUrl = buildResumeUrl(input.correlationId);
 
-    if (!apiKey || !from) {
-        context.log("SENDGRID_* not set; skip correction resume email");
+    if (!getAcsEmailConfig()) {
+        context.log(
+            "AZURE_COMMUNICATION_CONNECTION_STRING or ACS_EMAIL_SENDER not set; skip correction resume email"
+        );
         return;
     }
     if (!resumeUrl) {
@@ -56,27 +56,27 @@ async function sendCorrectionResumeEmail(
             ? input.aggregatedFailures.map((f) => `${f.step}: ${f.error}`).join("\n")
             : input.error ?? "(see orchestration status)";
 
-    sgMail.setApiKey(apiKey);
-    await sgMail.send({
+    const plainText = [
+        `Hello ${input.form.name},`,
+        ``,
+        `Your ${productLabel} workflow paused because a step needs a correction.`,
+        `Failed step(s): ${failedStep}`,
+        ``,
+        `Open this link to continue the same inquiry (correlation ID is pre-filled):`,
+        resumeUrl,
+        ``,
+        `Inquiry ID (correlation): ${input.correlationId}`,
+        ``,
+        `Details:`,
+        failureSummary,
+        ``,
+        `This is a demo message from Azure Durable Functions (Azure Communication Services Email).`,
+    ].join("\n");
+
+    await sendAcsPlainTextEmail({
         to,
-        from,
         subject: `[Demo] Action needed — ${productLabel} request (correction)`,
-        text: [
-            `Hello ${input.form.name},`,
-            ``,
-            `Your ${productLabel} workflow paused because a step needs a correction.`,
-            `Failed step(s): ${failedStep}`,
-            ``,
-            `Open this link to continue the same inquiry (correlation ID is pre-filled):`,
-            resumeUrl,
-            ``,
-            `Inquiry ID (correlation): ${input.correlationId}`,
-            ``,
-            `Details:`,
-            failureSummary,
-            ``,
-            `This is a demo message from Azure Durable Functions.`,
-        ].join("\n"),
+        plainText,
     });
 
     context.log(`Sent correction resume email to ${to}`);

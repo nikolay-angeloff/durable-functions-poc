@@ -38,7 +38,7 @@ flowchart LR
   end
 
   subgraph Mail["Изход"]
-    EM[Email — SendGrid]
+    EM[Email — ACS Email]
   end
 
   U --> CDN

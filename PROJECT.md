@@ -48,7 +48,7 @@ Four fields:
 2. The backend (one **HTTP-triggered Function** or a minimal endpoint) **validates** input and publishes a **message to the correct Service Bus queue** (or subscription) for **Azure** vs **M365** — see §4 and §5.
 3. A **separate** Function (trigger: **Service Bus**) starts a **Durable orchestration** (or two different orchestrations depending on “Azure” / “M365” — see §4).
 4. The orchestration runs **multiple mock steps** with optional **human correction** (Service Bus notification + external event); see **§4.1**.
-5. When the flow **completes**: send an **email** via a **transactional provider** (**SendGrid** or **Azure Communication Services**) for **both** radio options; the “Azure” / “M365” choice only affects which Durable path runs, not the mail provider.
+5. When the flow **completes**: send an **email** via **Azure Communication Services Email** for **both** radio options; the “Azure” / “M365” choice only affects which Durable path runs, not the mail provider.
 
 The form is thereby **decoupled** from long-running work and from email: it only initiates asynchronous work through a queue.
 
@@ -108,7 +108,7 @@ Minimum resource set in templates:
 | Service Bus namespace | **two queues** (or topic + two subscriptions) for Azure vs M365 |
 | API Management | gateway |
 | **Azure Static Web Apps (×2)** | **Form** SPA + **monitor** SPA — separate hostnames (`*-swa-*` and `*-monswa-*` in Bicep) |
-| (optional) Key Vault | secrets (connection strings, SendGrid key) |
+| (optional) Key Vault | secrets (connection strings, ACS connection string) |
 | Application Insights | observability |
 
 Parameters: **single demo** environment, names, APIM SKU.
@@ -133,7 +133,7 @@ Parameters: **single demo** environment, names, APIM SKU.
 
 - **APIM cold start / cost** — for a PoC use a lower SKU or temporarily call the Function over HTTPS directly (dev only), then add APIM.
 - **Durable + Service Bus** — idempotency on message retries (optional duplicate detection in Service Bus).
-- **Email** — transactional provider (**SendGrid** or **Azure Communication Services**); API keys in Key Vault / pipeline secrets.
+- **Email** — **Azure Communication Services Email**; connection string / sender in Key Vault / App settings.
 
 ---
 
@@ -153,7 +153,7 @@ Parameters: **single demo** environment, names, APIM SKU.
 | Topic | Choice |
 |-------|--------|
 | **Functions runtime** | **Node.js / TypeScript** (Durable Functions) |
-| **Email** | **Transactional** (**SendGrid** or **Azure Communication Services**) for **both** “Azure” and “M365” form options |
+| **Email** | **Azure Communication Services Email** for **both** “Azure” and “M365” form options |
 | **Static frontend** | **Azure Static Web Apps** — **two** apps (form + monitor); separate deployment tokens |
 | **Service Bus shape** | **Two** queues or **two** topic subscriptions — separate triggers per product path |
 | **Environments** | **Single demo** — one resource group (prod-like for the PoC) |
@@ -178,7 +178,7 @@ docs/
 ```
 
 - **`main.bicep`** exposes **outputs**: function app name/host, **both** SWA hostnames (`staticWebAppHostname`, `staticWebAppMonitorHostname`), optional APIM URLs.
-- **Secrets** are not committed: set SendGrid and other keys on the Function App after deploy, or use Key Vault + pipeline parameters.
+- **Secrets** are not committed: set ACS Email and other keys on the Function App after deploy, or use Key Vault + pipeline parameters.
 - **CI:** `az deployment group create` with `main.bicep` + `parameters/demo.parameters.json`.
 
 The same structure can map to **Terraform** (`infra/terraform/modules/...`, `environments/demo/terraform.tfvars`) if you standardize on Terraform instead of Bicep.

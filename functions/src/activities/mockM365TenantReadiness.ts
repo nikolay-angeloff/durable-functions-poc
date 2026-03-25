@@ -1,6 +1,7 @@
 import { InvocationContext } from "@azure/functions";
 import * as df from "durable-functions";
 import type { FormSubmission, MockApiResult } from "../lib/types";
+import { demoStepDelayMs } from "../lib/demoStepDelay";
 
 /** Mock Entra / tenant readiness (isolated activity). */
 df.app.activity("mockM365TenantReadiness", {
@@ -8,6 +9,7 @@ df.app.activity("mockM365TenantReadiness", {
         input: { form: FormSubmission },
         context: InvocationContext
     ): Promise<MockApiResult> => {
+        await demoStepDelayMs();
         const { form } = input;
         context.log(`mockM365TenantReadiness for ${form.email}`);
 

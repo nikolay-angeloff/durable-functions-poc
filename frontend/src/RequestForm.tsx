@@ -6,15 +6,162 @@ type Product = "azure" | "m365";
 
 type OrchestrationStatusPayload = {
     runtimeStatus?: string;
+    input?: { product?: "azure" | "m365" };
     customStatus?: {
         flow?: "azure" | "m365";
         waitingForCorrection?: boolean;
         phase?: "parallelValidateEnrich" | "singleStep";
+        currentStep?: string;
+        stepIndex?: number;
+        totalSteps?: number;
         failedStep?: string;
         reason?: string;
         aggregatedFailures?: { step: string; error: string }[];
+        completedSteps?: number;
     };
 };
+
+const M365_STEP_LABEL: Record<string, string> = {
+    tenantReadiness: "tenant readiness",
+    licenseCheck: "license check",
+    consentGate: "consent gate",
+};
+
+const AZURE_STEP_TITLE: Record<string, string> = {
+    parallelValidateEnrich: "Validate & enrich (parallel)",
+    approve: "Risk approval",
+    sendEmail: "Send notification email",
+};
+
+/** Human-readable automation state for the bottom status strip (polled every 2s). */
+function describeAutomationStatus(orch: OrchestrationStatusPayload | null): {
+    title: string;
+    detail?: string;
+} {
+    if (!orch) {
+        return {
+            title: "Connecting to automation…",
+            detail: "Fetching status every 2 seconds.",
+        };
+    }
+
+    const rs = orch.runtimeStatus ?? "";
+    const cs = orch.customStatus;
+    const product = orch.input?.product;
+    const productHint =
+        product === "azure" ? "Azure" : product === "m365" ? "Microsoft 365" : null;
+
+    if (rs === "Pending") {
+        return { title: "Queued — starting soon.", detail: productHint ? `Flow: ${productHint}` : undefined };
+    }
+
+    if (rs === "Running") {
+        if (cs && typeof cs === "object" && cs.waitingForCorrection === true) {
+            const m365Pos =
+                cs.flow === "m365" &&
+                typeof cs.stepIndex === "number" &&
+                typeof cs.totalSteps === "number"
+                    ? ` — step ${cs.stepIndex + 1} of ${cs.totalSteps}`
+                    : "";
+
+            if (cs.phase === "parallelValidateEnrich") {
+                return {
+                    title: "Paused — parallel validate / enrich need a fix.",
+                    detail: "Submit the correction form above.",
+                };
+            }
+            if (cs.flow === "azure" && cs.phase === "singleStep" && cs.failedStep === "approve") {
+                return {
+                    title: "Paused — approval step needs a correction.",
+                    detail: cs.reason,
+                };
+            }
+            if (cs.flow === "m365" && cs.failedStep) {
+                const stepHuman = M365_STEP_LABEL[cs.failedStep] ?? cs.failedStep;
+                return {
+                    title: `Paused — ${stepHuman} failed${m365Pos}.`,
+                    detail: cs.reason,
+                };
+            }
+            return {
+                title: "Paused — waiting for your correction.",
+                detail: cs.reason,
+            };
+        }
+
+        if (cs && typeof cs === "object" && cs.waitingForCorrection !== true) {
+            const step = cs.currentStep;
+            const tick = "Status refreshes every 2 seconds.";
+
+            if (step === "sendEmail") {
+                return {
+                    title: `Current step: ${AZURE_STEP_TITLE.sendEmail}…`,
+                    detail: "Final step before completion.",
+                };
+            }
+
+            if (cs.flow === "m365" && step && typeof cs.stepIndex === "number" && typeof cs.totalSteps === "number") {
+                const human = M365_STEP_LABEL[step] ?? step;
+                return {
+                    title: `Current step (${cs.stepIndex + 1} of ${cs.totalSteps}): ${human}…`,
+                    detail: tick,
+                };
+            }
+
+            if (cs.flow === "azure" && step) {
+                const label = AZURE_STEP_TITLE[step] ?? step;
+                return {
+                    title: `Current step: ${label}…`,
+                    detail: productHint ? `${productHint} · ${tick}` : tick,
+                };
+            }
+        }
+
+        if (cs && typeof cs === "object" && cs.phase === "parallelValidateEnrich") {
+            return {
+                title: "Running parallel validate & enrich…",
+                detail: productHint ? `${productHint} · This updates every 2s.` : "This updates every 2s.",
+            };
+        }
+        if (cs && typeof cs === "object" && cs.phase === "singleStep" && !cs.waitingForCorrection) {
+            return {
+                title: "Running approval step…",
+                detail: productHint ? `${productHint} · This updates every 2s.` : "This updates every 2s.",
+            };
+        }
+        if (cs && typeof cs === "object" && typeof cs.completedSteps === "number" && cs.completedSteps > 0) {
+            return {
+                title: "Finishing up…",
+                detail: "Sending notification email.",
+            };
+        }
+
+        return {
+            title: productHint
+                ? `${productHint} automation is running…`
+                : "Automation is running…",
+            detail: "Steps execute in the cloud. Status refreshes every 2 seconds.",
+        };
+    }
+
+    if (rs === "Completed") {
+        return {
+            title: "Completed successfully.",
+            detail: "The workflow finished; you can close this page.",
+        };
+    }
+    if (rs === "Failed") {
+        return {
+            title: "Failed — the workflow stopped with an error.",
+            detail: "Check Azure logs for details.",
+        };
+    }
+    if (rs === "Canceled" || rs === "Terminate" || rs === "Terminated") {
+        return { title: "Orchestration was terminated.", detail: undefined };
+    }
+
+    return { title: `Status: ${rs}`, detail: undefined };
+}
 
 const UUID_PARAM =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -162,6 +309,8 @@ export default function RequestForm() {
 
     const done = orch?.runtimeStatus === "Completed" || orch?.runtimeStatus === "Failed";
 
+    const automationLine = poll ? describeAutomationStatus(orch) : null;
+
     useEffect(() => {
         if (done && poll) {
             setPoll(false);
@@ -177,22 +326,72 @@ export default function RequestForm() {
     return (
         <>
             <h1>Request demo</h1>
-            <p className="lede">
-                <strong>Azure</strong> flow: validate ∥ enrich (parallel, join) → approve (mock).{" "}
-                <strong>M365</strong> flow: tenant readiness → license check → consent gate (mock).
-                On failure, Service Bus gets a notification; fix data below.
-            </p>
+            <section className="demo-guide" aria-label="How the demo flows work">
+                <h2>Azure (order)</h2>
+                <ol>
+                    <li>
+                        <strong>Validate</strong> and <strong>enrich</strong> run <em>at the same time</em>{" "}
+                        (~4–5s each; you see one “parallel” step in the status bar). Both must pass.
+                    </li>
+                    <li>
+                        <strong>Validate</strong> fails if the name has fewer than 2 characters.
+                    </li>
+                    <li>
+                        <strong>Enrich</strong> fails if the name contains <code>BLOCK</code> (mock policy
+                        block).
+                    </li>
+                    <li>
+                        <strong>Approve</strong> runs after the parallel pair succeeds. It expects a
+                        confirmed correction (<code>correctionConfirmed</code>) — the first run always
+                        stops here so you can use the correction form and submit once.
+                    </li>
+                    <li>
+                        <strong>Email</strong> is the last step (Azure Communication Services Email when
+                        configured).
+                    </li>
+                </ol>
+                <p className="mono-hint">
+                    Demo: any step blocks → orchestration pauses, Service Bus may get a message, and the
+                    form below asks for a fix.
+                </p>
+
+                <h2>Microsoft 365 (order)</h2>
+                <ol>
+                    <li>
+                        <strong>Tenant readiness</strong> — fails if the name contains{" "}
+                        <code>NOTENANT</code> (mock Entra check).
+                    </li>
+                    <li>
+                        <strong>License / contact</strong> — fails if the phone has fewer than 10 digits.
+                    </li>
+                    <li>
+                        <strong>Consent gate</strong> — same confirmation rule as Azure approve: submit a
+                        correction with the checkbox so the workflow can continue.
+                    </li>
+                    <li>
+                        <strong>Email</strong> last.
+                    </li>
+                </ol>
+                <p className="note">
+                    The bottom <strong>Automation</strong> strip polls every 2s and shows which step is
+                    active. Each step waits ~4–5s in this demo so progress is visible.
+                </p>
+            </section>
             <p className="meta">Correlation ID: {correlationId}</p>
             <form onSubmit={onSubmit}>
                 <label>
-                    Name — Azure: include <code>BLOCK</code> to fail enrich. M365: include{" "}
-                    <code>NOTENANT</code> to fail tenant step.
+                    Name
                     <input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
                         autoComplete="name"
                     />
+                    <span className="field-hint">
+                        Azure: <code>BLOCK</code> blocks only the <strong>enrich</strong> step. Too-short
+                        names block <strong>validate</strong>. M365: <code>NOTENANT</code> blocks{" "}
+                        <strong>tenant readiness</strong>.
+                    </span>
                 </label>
                 <label>
                     Email
@@ -266,22 +465,29 @@ export default function RequestForm() {
                         </p>
                     )}
                     <p className="hint">
-                        Flow: <strong>{orch?.customStatus?.flow ?? "?"}</strong>
-                        {orch?.customStatus?.phase === "parallelValidateEnrich" ? (
-                            <>
-                                {" "}
-                                · Phase: <strong>parallel validate + enrich</strong>
-                            </>
-                        ) : (
-                            <>
-                                {" "}
-                                · Step:{" "}
-                                <strong>{String(orch?.customStatus?.failedStep ?? "?")}</strong>
-                            </>
-                        )}
+                        <strong>Where it stopped:</strong>{" "}
+                        {orch?.customStatus?.flow === "azure" &&
+                        orch.customStatus.phase === "parallelValidateEnrich"
+                            ? "Parallel pair — fix every listed failure, then submit once."
+                            : orch?.customStatus?.flow === "azure" && orch.customStatus.failedStep === "approve"
+                              ? "Risk approval — submit this form with confirmation checked."
+                              : orch?.customStatus?.flow === "m365" && orch.customStatus.failedStep === "tenantReadiness"
+                                ? "Tenant step — remove NOTENANT from name or fix as shown above."
+                                : orch?.customStatus?.flow === "m365" && orch.customStatus.failedStep === "licenseCheck"
+                                  ? "License/contact — use a phone with at least 10 digits."
+                                  : orch?.customStatus?.flow === "m365" && orch.customStatus.failedStep === "consentGate"
+                                    ? "Consent — submit with confirmation checked."
+                                    : `Flow ${orch?.customStatus?.flow ?? "?"}, step ${String(orch?.customStatus?.failedStep ?? "?")}.`}
                         <br />
-                        Azure: remove <code>BLOCK</code> from name or confirm risk step. M365: fix
-                        phone digits (≥10) or remove <code>NOTENANT</code> / confirm consent.
+                        <span className="field-hint">
+                            Flow <strong>{orch?.customStatus?.flow ?? "?"}</strong>
+                            {orch?.customStatus?.phase === "parallelValidateEnrich" ? (
+                                <> · phase <strong>parallel validate + enrich</strong></>
+                            ) : orch?.customStatus?.failedStep ? (
+                                <> · step <strong>{orch.customStatus.failedStep}</strong></>
+                            ) : null}
+                            .
+                        </span>
                     </p>
                     <label>
                         Name
@@ -330,8 +536,22 @@ export default function RequestForm() {
             {message && (
                 <p className={`feedback ${status === "err" ? "error" : "success"}`}>{message}</p>
             )}
-            {poll && orch?.runtimeStatus && (
-                <p className="meta">Orchestration: {orch.runtimeStatus}</p>
+
+            {poll && automationLine && (
+                <div className="automation-status-bar" role="status" aria-live="polite" aria-atomic="true">
+                    <div className="automation-status-bar-inner">
+                        <span className="automation-status-label">Automation</span>
+                        <span className="automation-status-title">{automationLine.title}</span>
+                        {automationLine.detail && (
+                            <span className="automation-status-detail">{automationLine.detail}</span>
+                        )}
+                        {orch?.runtimeStatus && (
+                            <span className="automation-status-raw">
+                                <code>{orch.runtimeStatus}</code>
+                            </span>
+                        )}
+                    </div>
+                </div>
             )}
         </>
     );

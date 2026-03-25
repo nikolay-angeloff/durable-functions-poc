@@ -1,6 +1,7 @@
 import { InvocationContext } from "@azure/functions";
 import * as df from "durable-functions";
 import type { FormSubmission, MockApiResult } from "../lib/types";
+import { demoStepDelayMs } from "../lib/demoStepDelay";
 
 /** Mock admin consent / SoR gate (isolated activity). */
 df.app.activity("mockM365ConsentGate", {
@@ -8,6 +9,7 @@ df.app.activity("mockM365ConsentGate", {
         input: { form: FormSubmission },
         context: InvocationContext
     ): Promise<MockApiResult> => {
+        await demoStepDelayMs();
         const { form } = input;
         context.log(`mockM365ConsentGate for ${form.email}`);
 

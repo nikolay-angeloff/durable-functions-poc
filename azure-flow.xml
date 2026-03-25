@@ -1,0 +1,173 @@
+<mxGraphModel dx="3766" dy="2190" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="A" parent="1" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" value="System A — Input &amp; Validation" vertex="1">
+            <mxGeometry height="220" width="860" x="-980" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="A1" parent="A" style="rounded=1;ellipse;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Start&#xa;CCC-Azure" vertex="1">
+            <mxGeometry height="50" width="90" x="20" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A2" parent="A" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Licenses &amp; Tenant&#xa;Select &amp; provide" vertex="1">
+            <mxGeometry height="50" width="120" x="150" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A3" parent="A" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Configure Order&#xa;Items &amp; details" vertex="1">
+            <mxGeometry height="50" width="120" x="310" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A4" parent="A" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Review &amp; Agree&#xa;User confirms" vertex="1">
+            <mxGeometry height="50" width="120" x="470" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A5" parent="A" style="rhombus;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Is Order OK?" vertex="1">
+            <mxGeometry height="70" width="100" x="630" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="A6" parent="A" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="Place Order&#xa;User submits" vertex="1">
+            <mxGeometry height="50" width="60" x="770" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A7" parent="A" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Seller Adjusts /&#xa;Customer Re-reviews" vertex="1">
+            <mxGeometry height="50" width="140" x="630" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="AREINPUT" parent="A" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="Re-input &amp; Revalidate&#xa;From Event Bus" vertex="1">
+            <mxGeometry height="50" width="150" x="20" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="A" source="A1" style="edgeStyle=orthogonalEdgeStyle;" target="A2">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="A" source="A2" style="edgeStyle=orthogonalEdgeStyle;" target="A3">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="A" source="A3" style="edgeStyle=orthogonalEdgeStyle;" target="A4">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="A" source="A4" style="edgeStyle=orthogonalEdgeStyle;" target="A5">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="A" source="A5" style="edgeStyle=orthogonalEdgeStyle;fontColor=#82b366;" target="A6" value="Yes">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="A" source="A5" style="edgeStyle=orthogonalEdgeStyle;fontColor=#b85450;" target="A7" value="No">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="A" source="A7" style="edgeStyle=orthogonalEdgeStyle;" target="A4">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="A" source="AREINPUT" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#b85450;" target="A2">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="EB" parent="1" style="rounded=1;dashed=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" value="Event Bus&#xa;Decoupled async messaging — A ↔ B" vertex="1">
+            <mxGeometry height="60" width="280" x="-200" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="eAEB" edge="1" parent="1" source="A6" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;fontColor=#6c8ebf;" target="EB" value="Order Placed Event">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eEBA" edge="1" parent="1" source="EB" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#b85450;fontColor=#b85450;" target="AREINPUT" value="Re-input Request">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="B" parent="1" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" value="System B — Background Onboarding Engine" vertex="1">
+            <mxGeometry height="240" width="1020" x="60" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="B1" parent="B" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Create Customer&#xa;In CCC Platform" vertex="1">
+            <mxGeometry height="50" width="130" x="20" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="B2" parent="B" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Request Consent&#xa;Validate completion" vertex="1">
+            <mxGeometry height="50" width="130" x="180" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="B3" parent="B" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Gather Tenant Data&#xa;Azure tenant" vertex="1">
+            <mxGeometry height="50" width="130" x="340" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="zE15CyTbX7jzIswdbY6r-1" edge="1" parent="B" source="B4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeColor=#B85450;">
+            <mxGeometry relative="1" as="geometry">
+                <mxPoint x="550" y="150" as="targetPoint" />
+            </mxGeometry>
+        </mxCell>
+        <mxCell id="B4" parent="B" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Configure BI&#xa;Pricing &amp; reports" vertex="1">
+            <mxGeometry height="50" width="130" x="500" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="B5" parent="B" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="Provision&#xa;Permissions" vertex="1">
+            <mxGeometry height="50" width="130" x="660" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="B6" parent="B" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="Notify Customer&#xa;Order complete" vertex="1">
+            <mxGeometry height="50" width="130" x="660" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="BF" parent="B" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="Unsatisfactory Result&#xa;Emit re-input event" vertex="1">
+            <mxGeometry height="50" width="150" x="300" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="eb1" edge="1" parent="B" source="B1" style="edgeStyle=orthogonalEdgeStyle;" target="B2">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb2" edge="1" parent="B" source="B2" style="edgeStyle=orthogonalEdgeStyle;" target="B3">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb3" edge="1" parent="B" source="B3" style="edgeStyle=orthogonalEdgeStyle;" target="B4">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb4" edge="1" parent="B" source="B4" style="edgeStyle=orthogonalEdgeStyle;" target="B5">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eb5" edge="1" parent="B" source="B5" style="edgeStyle=orthogonalEdgeStyle;" target="B6">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebf1" edge="1" parent="B" source="B2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;" target="BF" value="Fail">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebf2" edge="1" parent="B" source="B3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;" target="BF" value="Fail">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebf3" edge="1" parent="B" source="B5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;" target="BF" value="Fail">
+            <mxGeometry relative="1" as="geometry">
+                <Array as="points">
+                    <mxPoint x="725" y="150" />
+                    <mxPoint x="480" y="150" />
+                    <mxPoint x="480" y="205" />
+                </Array>
+            </mxGeometry>
+        </mxCell>
+        <mxCell id="eEBB" edge="1" parent="1" source="EB" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;fontColor=#6c8ebf;" target="B1" value="Trigger Onboarding">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eBFEB" edge="1" parent="1" source="BF" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#b85450;fontColor=#b85450;" target="EB" value="Re-input Request Event">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="C" parent="1" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;fontStyle=1;" value="System C — External APIs" vertex="1">
+            <mxGeometry height="260" width="980" x="190" y="-20" as="geometry" />
+        </mxCell>
+        <mxCell id="C1" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="CCC Platform API&#xa;Create customer" vertex="1">
+            <mxGeometry height="50" width="120" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C2" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="Consent API&#xa;Validate consent" vertex="1">
+            <mxGeometry height="50" width="120" x="160" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C3" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="Tenant API&#xa;Gather data" vertex="1">
+            <mxGeometry height="50" width="120" x="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C4" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="Pricing API&#xa;Set default prices" vertex="1">
+            <mxGeometry height="50" width="120" x="440" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C5" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="Entra API&#xa;Provision access" vertex="1">
+            <mxGeometry height="50" width="120" x="580" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C6" parent="C" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="BI Report API&#xa;Share report" vertex="1">
+            <mxGeometry height="50" width="120" x="720" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="C7" parent="C" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Data Collection API&#xa;Collect &amp; ingest data" vertex="1">
+            <mxGeometry height="50" width="120" x="370" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ec1" edge="1" parent="1" source="B1" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C1" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2" edge="1" parent="1" source="B2" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C2" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec3" edge="1" parent="1" source="B3" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C3" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec4" edge="1" parent="1" source="B4" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C4" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec5" edge="1" parent="1" source="B5" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C5" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec6" edge="1" parent="1" source="B5" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;startArrow=block;" target="C6" value="API">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+    </root>
+</mxGraphModel>

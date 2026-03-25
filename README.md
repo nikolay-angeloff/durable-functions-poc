@@ -1,6 +1,6 @@
 # Durable Functions demo (Azure)
 
-React **form** + separate **monitor** SPA → HTTP Function → **Service Bus** (two queues) → **Durable orchestrations** → SendGrid email. Infra: **Bicep** (two Static Web Apps). CI: **GitHub Actions**. Edge: **API Management** (optional, `deployApim` in parameters).
+React **form** + separate **monitor** SPA → HTTP Function → **Service Bus** (two queues) → **Durable orchestrations** → **Azure Communication Services Email**. Infra: **Bicep** (two Static Web Apps). CI: **GitHub Actions**. Edge: **API Management** (optional, `deployApim` in parameters).
 
 ## Prerequisites
 
@@ -42,18 +42,18 @@ az deployment group create \
   --parameters @infra/bicep/parameters/demo.parameters.json
 ```
 
-Set `deployApim: true` in parameters for API Management (first activation can take 30+ minutes). Configure SendGrid on the Function App: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` (verified sender).
+Set `deployApim: true` in parameters for API Management (first activation can take 30+ minutes). Configure **Azure Communication Services Email** on the Function App: `AZURE_COMMUNICATION_CONNECTION_STRING` (from the Communication resource **Keys**) and `ACS_EMAIL_SENDER` (a verified sender address from **Email** → try Azure-managed domain first). See [Send email with ACS](https://learn.microsoft.com/azure/communication-services/quickstarts/email/send-email).
 
 ### Correction pause — resume link email
 
-When a mock step fails, the workflow waits for **`POST /correction`**. The activity **`publishCorrectionNotification`** also sends a **transactional email** to the submitter’s address (same SendGrid settings as completion mail) if **`WEB_APP_BASE_URL`** is set. The message includes a link:
+When a mock step fails, the workflow waits for **`POST /correction`**. The activity **`publishCorrectionNotification`** also sends a **transactional email** via ACS Email to the submitter’s address (same `AZURE_COMMUNICATION_CONNECTION_STRING` / `ACS_EMAIL_SENDER` as completion mail) if **`WEB_APP_BASE_URL`** is set. The message includes a link:
 
 `WEB_APP_BASE_URL/?correlationId=<inquiry-id>`
 
 Opening that URL loads the SPA with the same **correlation / inquiry ID** and starts status polling so the user can submit a correction (“restart” the human step without a new form submission).
 
 - **Bicep:** optional parameter **`webAppBaseUrl`** overrides the default `https://<Static Web App default hostname>` for `WEB_APP_BASE_URL` on the Function App (no trailing slash). Demo parameters set the dev Static Web App host **`https://victorious-ocean-036a1ed03.2.azurestaticapps.net`**.
-- **Local:** copy `local.settings.json.example` — `WEB_APP_BASE_URL` points at that same dev SPA so resume links match the deployed frontend when testing locally. If `WEB_APP_BASE_URL` or SendGrid is missing, the resume email is skipped (see Function logs).
+- **Local:** copy `local.settings.json.example` — `WEB_APP_BASE_URL` points at that same dev SPA so resume links match the deployed frontend when testing locally. If `WEB_APP_BASE_URL` or ACS Email env vars are missing, the resume email is skipped (see Function logs).
 
 ## Project layout
 

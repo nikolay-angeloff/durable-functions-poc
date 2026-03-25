@@ -32,8 +32,17 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
         instanceId: context.df.instanceId,
     });
 
-    for (const stepName of M365_STEPS) {
+    for (let stepIndex = 0; stepIndex < M365_STEPS.length; stepIndex++) {
+        const stepName = M365_STEPS[stepIndex];
         const activityName = ACTIVITY_BY_STEP[stepName];
+        context.df.setCustomStatus({
+            flow: "m365",
+            waitingForCorrection: false,
+            currentStep: stepName,
+            stepIndex,
+            totalSteps: M365_STEPS.length,
+        });
+
         let stepResult = (yield context.df.callActivity(activityName, {
             form,
         })) as MockApiResult;
@@ -51,6 +60,9 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
             context.df.setCustomStatus({
                 flow: "m365",
                 waitingForCorrection: true,
+                currentStep: stepName,
+                stepIndex,
+                totalSteps: M365_STEPS.length,
                 failedStep: stepName,
                 reason: stepResult.ok ? undefined : stepResult.error,
             });
@@ -66,6 +78,14 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
                 correlationId: form.correlationId,
             };
 
+            context.df.setCustomStatus({
+                flow: "m365",
+                waitingForCorrection: false,
+                currentStep: stepName,
+                stepIndex,
+                totalSteps: M365_STEPS.length,
+            });
+
             stepResult = (yield context.df.callActivity(activityName, {
                 form,
             })) as MockApiResult;
@@ -76,6 +96,7 @@ const m365OrchestrationHandler: OrchestrationHandler = function* (
         flow: "m365",
         waitingForCorrection: false,
         completedSteps: M365_STEPS.length,
+        currentStep: "sendEmail",
     });
 
     return yield context.df.callActivity("sendEmail", form);

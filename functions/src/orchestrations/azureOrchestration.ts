@@ -22,6 +22,8 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
     });
 
     // Fan-out / fan-in: validate and enrich run in parallel; one inquiry with all failures.
+    /** After one user correction, a second parallel failure terminates the orchestration (no infinite loop). */
+    let hadParallelCorrection = false;
     let parallelDone = false;
     while (!parallelDone) {
         context.df.setCustomStatus({
@@ -51,6 +53,20 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             aggregatedFailures.push({ step: "enrich", error: enrichResult.error });
         }
 
+        if (hadParallelCorrection) {
+            context.df.setCustomStatus({
+                flow: "azure",
+                waitingForCorrection: false,
+                phase: "parallelValidateEnrich",
+                currentStep: "parallelValidateEnrich",
+                parallelTerminalFailure: true,
+                aggregatedFailures,
+            });
+            throw new Error(
+                `[Azure] Validate/enrich still invalid after one correction round: ${JSON.stringify(aggregatedFailures)}`
+            );
+        }
+
         yield context.df.callActivity("publishCorrectionNotification", {
             instanceId: context.df.instanceId,
             correlationId: form.correlationId,
@@ -78,6 +94,7 @@ const azureOrchestrationHandler: OrchestrationHandler = function* (
             product: "azure",
             correlationId: form.correlationId,
         };
+        hadParallelCorrection = true;
     }
 
     // Sequential approve (single-step correction loop as before).

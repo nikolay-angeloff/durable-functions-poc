@@ -12,30 +12,63 @@ import {
 import "@xyflow/react/dist/style.css";
 import { buildWorkflowGraph, type StepStatus } from "./workflowFlowModel";
 
-function StatusNode({ id, data }: NodeProps) {
-    const { label, status } = data as { label: string; status: StepStatus };
+type NodeData = {
+    label: string;
+    status: StepStatus;
+    /** split-out: register → two parallel branches; join-in: two → join */
+    handles?: "split-out" | "join-in";
+};
+
+function StatusNode({ data }: NodeProps) {
+    const { label, status, handles } = data as NodeData;
+
+    if (handles === "split-out") {
+        return (
+            <div className={`wf-node wf-node--${status}`}>
+                <Handle type="target" position={Position.Left} />
+                <div className="wf-node-label">{label}</div>
+                <Handle
+                    id="out-v"
+                    type="source"
+                    position={Position.Right}
+                    style={{ top: "32%" }}
+                />
+                <Handle
+                    id="out-e"
+                    type="source"
+                    position={Position.Right}
+                    style={{ top: "68%" }}
+                />
+            </div>
+        );
+    }
+
+    if (handles === "join-in") {
+        return (
+            <div className={`wf-node wf-node--${status}`}>
+                <Handle
+                    id="in-v"
+                    type="target"
+                    position={Position.Left}
+                    style={{ top: "32%" }}
+                />
+                <Handle
+                    id="in-e"
+                    type="target"
+                    position={Position.Left}
+                    style={{ top: "68%" }}
+                />
+                <div className="wf-node-label">{label}</div>
+                <Handle type="source" position={Position.Right} />
+            </div>
+        );
+    }
+
     return (
         <div className={`wf-node wf-node--${status}`}>
-            {id === "join" ? (
-                <>
-                    <Handle
-                        id="in-v"
-                        type="target"
-                        position={Position.Top}
-                        style={{ left: "28%" }}
-                    />
-                    <Handle
-                        id="in-e"
-                        type="target"
-                        position={Position.Top}
-                        style={{ left: "72%" }}
-                    />
-                </>
-            ) : (
-                <Handle type="target" position={Position.Top} />
-            )}
+            <Handle type="target" position={Position.Left} />
             <div className="wf-node-label">{label}</div>
-            <Handle type="source" position={Position.Bottom} />
+            <Handle type="source" position={Position.Right} />
         </div>
     );
 }
@@ -47,6 +80,7 @@ type Props = {
     runtimeStatus?: string;
     customStatus: unknown;
     flowSteps: string[];
+    activityDurations?: { name: string }[];
 };
 
 export default function WorkflowFlowchart({
@@ -54,6 +88,7 @@ export default function WorkflowFlowchart({
     runtimeStatus,
     customStatus,
     flowSteps,
+    activityDurations,
 }: Props) {
     const graph = useMemo(
         () =>
@@ -62,8 +97,9 @@ export default function WorkflowFlowchart({
                 runtimeStatus,
                 customStatus,
                 flowSteps,
+                activityDurations,
             }),
-        [orchestratorName, runtimeStatus, customStatus, flowSteps]
+        [orchestratorName, runtimeStatus, customStatus, flowSteps, activityDurations]
     );
 
     if (!graph) {
@@ -83,13 +119,14 @@ export default function WorkflowFlowchart({
                 <span className="wf-legend-item wf-node--failed">failed</span>
                 <span className="wf-legend-item wf-node--pending">not reached / pending</span>
             </p>
+            <p className="lede small wf-hint">← Start · main flow left → right · parallel branches stacked vertically</p>
             <div className="wf-canvas" role="img" aria-label="Workflow flowchart">
                 <ReactFlow
                     nodes={graph.nodes}
                     edges={graph.edges}
                     nodeTypes={nodeTypes}
                     fitView
-                    fitViewOptions={{ padding: 0.2, maxZoom: 1.25 }}
+                    fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
                     nodesDraggable={false}
                     nodesConnectable={false}
                     elementsSelectable={false}

@@ -21,16 +21,20 @@ function readCustomStatus(cs: unknown): Cs {
     };
 }
 
-/** Last outcome per activity function name from parsed flowSteps. */
+/**
+ * Parse flow step lines from Durable history. Uses permissive patterns (no ^ anchor)
+ * so minor format differences still match; trims \\r.
+ */
 export function parseActivityOutcomes(flowSteps: string[]): Map<string, "completed" | "failed"> {
     const last = new Map<string, "completed" | "failed">();
-    for (const line of flowSteps) {
-        const done = line.match(/^Activity completed: ([^\s(]+)/);
+    for (const raw of flowSteps) {
+        const line = raw.trim().replace(/\r/g, "");
+        const done = line.match(/Activity completed:\s*([^\s(,]+)/);
         if (done) {
             last.set(done[1], "completed");
             continue;
         }
-        const fail = line.match(/^Activity failed: ([^\s(]+)/);
+        const fail = line.match(/Activity failed:\s*([^\s(,]+)/);
         if (fail) {
             last.set(fail[1], "failed");
         }
@@ -38,8 +42,74 @@ export function parseActivityOutcomes(flowSteps: string[]): Map<string, "complet
     return last;
 }
 
+/** Each duration entry is a successful TaskCompleted for that activity. */
+function mergeActivityDurations(
+    outcomes: Map<string, "completed" | "failed">,
+    durations: { name: string }[]
+): void {
+    for (const d of durations) {
+        if (!d.name) {
+            continue;
+        }
+        if (outcomes.get(d.name) !== "failed") {
+            outcomes.set(d.name, "completed");
+        }
+    }
+}
+
+/**
+ * If the instance finished successfully, mark all expected activities as completed
+ * unless the history explicitly recorded a failure for that name (fixes empty/missed flowSteps).
+ */
+function applyCompletedOverride(
+    orchestratorName: string,
+    runtime: string,
+    outcomes: Map<string, "completed" | "failed">
+): void {
+    if (runtime !== "Completed") {
+        return;
+    }
+    const azureActs = [
+        "registerCorrelation",
+        "mockAzureValidate",
+        "mockAzureEnrich",
+        "mockAzureApprove",
+        "sendEmail",
+    ];
+    const m365Acts = [
+        "registerCorrelation",
+        "mockM365TenantReadiness",
+        "mockM365LicenseCheck",
+        "mockM365ConsentGate",
+        "sendEmail",
+    ];
+    const acts =
+        orchestratorName === "azureOrchestration"
+            ? azureActs
+            : orchestratorName === "m365Orchestration"
+              ? m365Acts
+              : [];
+    for (const a of acts) {
+        if (outcomes.get(a) !== "failed") {
+            outcomes.set(a, "completed");
+        }
+    }
+}
+
+function buildOutcomes(
+    orchestratorName: string,
+    runtime: string,
+    flowSteps: string[],
+    activityDurations: { name: string }[]
+): Map<string, "completed" | "failed"> {
+    const outcomes = parseActivityOutcomes(flowSteps);
+    mergeActivityDurations(outcomes, activityDurations);
+    applyCompletedOverride(orchestratorName, runtime, outcomes);
+    return outcomes;
+}
+
 function hadCorrectionSubmitted(flowSteps: string[]): boolean {
-    return flowSteps.some((s) => /^External event: CorrectionSubmitted\b/.test(s));
+    return flowSteps.some((s) => /External event:\s*CorrectionSubmitted\b/.test(s.trim()));
 }
 
 function statusFromActivity(
@@ -61,13 +131,14 @@ function sn(
     label: string,
     x: number,
     y: number,
-    status: StepStatus
+    status: StepStatus,
+    data?: Record<string, unknown>
 ): Node {
     return {
         id,
         type: "statusNode",
         position: { x, y },
-        data: { label, status },
+        data: { label, status, ...data },
     };
 }
 
@@ -94,6 +165,7 @@ function e(
     };
 }
 
+/** Horizontal LR layout (x grows →). */
 function buildAzureGraph(
     runtime: string,
     cs: Cs,
@@ -130,6 +202,8 @@ function buildAzureGraph(
         waitUserStatus = "waiting";
     } else if (correctionDone && (val === "success" || enr === "success" || appr === "success")) {
         waitUserStatus = "success";
+    } else if (runtime === "Completed") {
+        waitUserStatus = "success";
     }
 
     let endStatus: StepStatus = "pending";
@@ -142,26 +216,27 @@ function buildAzureGraph(
     const emailStatus: StepStatus =
         runtime === "Completed" ? (mail === "failed" ? "failed" : "success") : mail;
 
+    /* y: main spine ~100; parallel branches above/below */
     const nodes: Node[] = [
-        sn("start", "Start", 340, 0, "success"),
-        sn("register", "registerCorrelation", 300, 70, reg),
-        sn("validate", "mockAzureValidate", 120, 180, parallelWait ? "waiting" : val),
-        sn("enrich", "mockAzureEnrich", 480, 180, parallelWait ? "waiting" : enr),
-        sn("join", "Parallel join\n(both must pass)", 300, 300, joinStatus),
-        sn("approve", "mockAzureApprove", 300, 410, approveStatus),
-        sn("waitUser", "User correction\n(external event)", 560, 410, waitUserStatus),
-        sn("email", "sendEmail", 300, 530, emailStatus),
-        sn("end", "End", 340, 640, endStatus),
+        sn("start", "Start", 0, 80, "success"),
+        sn("register", "registerCorrelation", 140, 80, reg, { handles: "split-out" }),
+        sn("validate", "mockAzureValidate", 280, 0, parallelWait ? "waiting" : val),
+        sn("enrich", "mockAzureEnrich", 280, 160, parallelWait ? "waiting" : enr),
+        sn("join", "Parallel join\n(both)", 420, 80, joinStatus, { handles: "join-in" }),
+        sn("approve", "mockAzureApprove", 560, 80, approveStatus),
+        sn("waitUser", "User correction\n(event)", 700, 80, waitUserStatus),
+        sn("email", "sendEmail", 860, 80, emailStatus),
+        sn("end", "End", 1000, 80, endStatus),
     ];
 
     const edges: Edge[] = [
         e("e1", "start", "register"),
-        e("e2", "register", "validate"),
-        e("e3", "register", "enrich"),
+        e("e2", "register", "validate", "out-v"),
+        e("e3", "register", "enrich", "out-e"),
         e("e4", "validate", "join", undefined, "in-v"),
         e("e5", "enrich", "join", undefined, "in-e"),
         e("e6", "join", "approve"),
-        e("e7", "approve", "waitUser", undefined, undefined, "retry path"),
+        e("e7", "approve", "waitUser", undefined, undefined, "retry"),
         e("e8", "waitUser", "approve", undefined, undefined, "CorrectionSubmitted"),
         e("e9", "approve", "email"),
         e("e10", "email", "end"),
@@ -200,13 +275,13 @@ function buildM365Graph(
         runtime === "Completed" ? (mail === "failed" ? "failed" : "success") : mail;
 
     const nodes: Node[] = [
-        sn("start", "Start", 340, 0, "success"),
-        sn("register", "registerCorrelation", 300, 80, reg),
-        sn("tenant", "tenant readiness", 300, 170, tenantS),
-        sn("license", "license check", 300, 270, licenseS),
-        sn("consent", "consent gate", 300, 370, consentS),
-        sn("email", "sendEmail", 300, 470, emailStatus),
-        sn("end", "End", 340, 570, endStatus),
+        sn("start", "Start", 0, 80, "success"),
+        sn("register", "registerCorrelation", 140, 80, reg),
+        sn("tenant", "tenant readiness", 280, 80, tenantS),
+        sn("license", "license check", 420, 80, licenseS),
+        sn("consent", "consent gate", 560, 80, consentS),
+        sn("email", "sendEmail", 700, 80, emailStatus),
+        sn("end", "End", 860, 80, endStatus),
     ];
 
     const edges: Edge[] = [
@@ -229,11 +304,17 @@ export function buildWorkflowGraph(input: {
     runtimeStatus?: string;
     customStatus: unknown;
     flowSteps: string[];
+    activityDurations?: { name: string }[];
 }): { nodes: Node[]; edges: Edge[] } | null {
     const name = input.orchestratorName ?? "";
     const runtime = input.runtimeStatus ?? "";
     const cs = readCustomStatus(input.customStatus);
-    const outcomes = parseActivityOutcomes(input.flowSteps);
+    const outcomes = buildOutcomes(
+        name,
+        runtime,
+        input.flowSteps,
+        input.activityDurations ?? []
+    );
 
     if (name === "azureOrchestration") {
         return buildAzureGraph(runtime, cs, outcomes, input.flowSteps);

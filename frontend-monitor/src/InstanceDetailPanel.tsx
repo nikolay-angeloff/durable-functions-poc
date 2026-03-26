@@ -136,6 +136,7 @@ export default function InstanceDetailPanel({ instanceId, accessKey, onClose }: 
                         runtimeStatus={data.runtimeStatus}
                         customStatus={data.customStatus}
                         flowSteps={data.parsed?.flowSteps ?? []}
+                        activityDurations={data.parsed?.activityDurations}
                     />
 
                     <h3>Flow (where it passed)</h3>

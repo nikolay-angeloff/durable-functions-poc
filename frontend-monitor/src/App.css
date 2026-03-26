@@ -223,6 +223,11 @@ code {
   margin-bottom: 1.5rem;
 }
 
+.wf-hint {
+  margin: 0 0 0.5rem;
+  color: #64748b;
+}
+
 .wf-legend {
   display: flex;
   flex-wrap: wrap;
@@ -242,7 +247,8 @@ code {
 }
 
 .wf-canvas {
-  height: 460px;
+  height: 300px;
+  min-height: 260px;
   width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
